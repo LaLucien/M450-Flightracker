@@ -1,2 +1,10 @@
 # M450-Flightracker
-A Flighttraker and analysisi tool developed as a school project
+
+
+
+TODO:
+- LiteDb as DB
+- scrape google
+- cli ui
+- data processing
+-  

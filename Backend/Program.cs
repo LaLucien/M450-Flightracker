@@ -2,6 +2,7 @@ using FlightTracker.Api.Services;
 using FlightTracker.Api.Services.Selenium;
 using FlightTracker.Api.Infrastructure.LiteDb;
 using FlightTracker.Api.Storage.Repositories;
+using FlightTracker.Api.Storage.Repositories.Abstract;
 
 namespace FlightTracker.Api
 {
@@ -22,13 +23,14 @@ namespace FlightTracker.Api
 
             // Repository
             builder.Services.AddScoped<FlightSnapshotRepository>();
+            builder.Services.AddScoped<IFlightQueryRepository,FlightQueryRepository>();
 
             // Flight collection service
             builder.Services.AddScoped<FlightCollectionService>();
 
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddScoped<IFlightService, FlightService>();
-            builder.Services.AddScoped<IFlightProvider, GoogleFlightsSeleniumService>();
+            builder.Services.AddScoped<IFlightScraper, GoogleFlightsSeleniumService>();
 
             builder.Services.AddCors(options =>
             {

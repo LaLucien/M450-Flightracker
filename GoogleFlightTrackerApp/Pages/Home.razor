@@ -1,0 +1,84 @@
+﻿@page "/"
+@using FlightTracker.Contracts
+@using MudBlazor
+@inject FlightTracker.Web.Services.FlightService FlightService
+
+<PageTitle>Flugpreis-Tracker</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Flugpreis-Tracker</MudText>
+
+<MudCard Class="mb-4">
+    <MudCardContent>
+        <MudText>Klicken Sie auf den Button, um die aktuellen Preise abzurufen.</MudText>
+    </MudCardContent>
+</MudCard>
+
+<MudButton Variant="Variant.Filled" 
+           Color="Color.Primary" 
+           OnClick="OnCheckPrices" 
+           Disabled="@_loading"
+           StartIcon="@Icons.Material.Filled.Search"
+           Class="mb-4">
+    @if (_loading)
+    {
+        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+        <MudText Class="ms-2">Daten werden geladen...</MudText>
+    }
+    else
+    {
+        <MudText>Preise prüfen</MudText>
+    }
+</MudButton>
+
+@if (_flights == null && _loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+}
+else if (_flights != null)
+{
+    <MudTable Items="@_flights" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading">
+        <HeaderContent>
+            <MudTh>ID</MudTh>
+            <MudTh>Abflugort</MudTh>
+            <MudTh>Zielort</MudTh>
+            <MudTh>Airline</MudTh>
+            <MudTh>Datum</MudTh>
+            <MudTh>Preis (CHF)</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="ID">@context.Id</MudTd>
+            <MudTd DataLabel="Abflugort">@context.Origin</MudTd>
+            <MudTd DataLabel="Zielort">@context.Destination</MudTd>
+            <MudTd DataLabel="Airline">@context.Airline</MudTd>
+            <MudTd DataLabel="Datum">@context.DepartureDate.ToShortDateString()</MudTd>
+            <MudTd DataLabel="Preis (CHF)">
+                <MudText Color="Color.Success"><b>@context.Price.ToString("N2") CHF</b></MudText>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<FlightDto>? _flights;
+    private bool _loading = false;
+
+    private async Task OnCheckPrices()
+    {
+        _loading = true;
+        try
+        {
+            var query = new FlightQueryDto
+            {
+                Origin = "ZRH",
+                Destination = "LHR",
+                DepartureDate = DateTime.Today.AddDays(7)
+            };
+
+            _flights = await FlightService.CollectAsync(query);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

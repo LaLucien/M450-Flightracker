@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "GoogleFlightTrackerApp\\FlightTracker.Web.csproj",
+        "Action": "StartWithoutDebugging"
+      },
+      {
+        "Path": "Backend\\FlightTracker.Api.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

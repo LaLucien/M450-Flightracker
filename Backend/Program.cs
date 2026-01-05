@@ -1,0 +1,63 @@
+using FlightTracker.Api.Services;
+using FlightTracker.Api.Services.Selenium;
+using FlightTracker.Api.Infrastructure.LiteDb;
+using FlightTracker.Api.Storage.Repositories;
+
+namespace FlightTracker.Api
+{
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
+
+            // Add services to the container.
+
+            builder.Services.AddControllers();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
+            // LiteDB context (singleton)
+            builder.Services.AddSingleton(new LiteDbContext("Filename=flights.db;Connection=shared"));
+
+            // Repository
+            builder.Services.AddScoped<FlightSnapshotRepository>();
+
+            // Flight collection service
+            builder.Services.AddScoped<FlightCollectionService>();
+
+            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+            builder.Services.AddScoped<IFlightService, FlightService>();
+            builder.Services.AddScoped<IFlightProvider, GoogleFlightsSeleniumService>();
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowLocalFrontend", policy =>
+                {
+                    policy.WithOrigins("https://localhost:7108")
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
+
+            var app = builder.Build();
+
+            // Configure the HTTP request pipeline.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
+            app.UseHttpsRedirection();
+            app.UseCors("AllowLocalFrontend");
+
+            app.UseAuthorization();
+
+
+            app.MapControllers();
+
+            app.Run();
+        }
+    }
+}

@@ -1,6 +1,7 @@
 using FlightTracker.Api.Services;
 using FlightTracker.Api.Services.Selenium;
 using FlightTracker.Api.Services.Background;
+using FlightTracker.Api.Infrastructure;
 using FlightTracker.Api.Infrastructure.LiteDb;
 using FlightTracker.Api.Storage.Repositories;
 
@@ -30,6 +31,11 @@ namespace FlightTracker.Api
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddScoped<IFlightService, FlightService>();
             builder.Services.AddScoped<IFlightProvider, GoogleFlightsSeleniumService>();
+
+            // Background scheduler dependencies
+            builder.Services.AddSingleton<ITimeProvider, SystemTimeProvider>();
+            builder.Services.AddSingleton<IScheduleConfigProvider, DefaultScheduleConfigProvider>();
+            builder.Services.AddScoped<IFlightScrapingService, DefaultFlightScrapingService>();
 
             // Background scheduler for automated scraping
             builder.Services.AddHostedService<ScrapeScheduler>();

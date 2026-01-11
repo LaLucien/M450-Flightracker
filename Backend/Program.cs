@@ -30,13 +30,11 @@ namespace FlightTracker.Api
             builder.Services.AddScoped<FlightStatsService>();
             builder.Services.AddScoped<FlightCollectionService>();
 
-            // Background scheduler dependencies
-            builder.Services.AddSingleton<ITimeProvider, SystemTimeProvider>();
-            builder.Services.AddSingleton<IScheduleConfigProvider, DefaultScheduleConfigProvider>();
-            builder.Services.AddScoped<IFlightScrapingService, DefaultFlightScrapingService>();
-
-            // Background scheduler for automated scraping
-            builder.Services.AddHostedService<ScrapeScheduler>();
+            // Background scheduler dependencies (disabled for now until implementation ready)
+            // builder.Services.AddSingleton<ITimeProvider, SystemTimeProvider>();
+            // builder.Services.AddSingleton<IScheduleConfigProvider, DefaultScheduleConfigProvider>();
+            // builder.Services.AddSingleton<IFlightScrapingService, DefaultFlightScrapingService>();
+            // builder.Services.AddHostedService<ScrapeScheduler>();
 
             builder.Services.AddCors(options =>
             {

@@ -23,9 +23,14 @@ namespace FlightTracker.Api
             builder.Services.AddSingleton(new LiteDbContext("Filename=flights.db;Connection=shared"));
 
             // Repository
+            // Repositories
             builder.Services.AddScoped<FlightSnapshotRepository>();
+            builder.Services.AddScoped<FlightRepository>();
+            builder.Services.AddScoped<ObservationRepository>();
 
             // Flight collection service
+            // Services
+            builder.Services.AddScoped<FlightStatsService>();
             builder.Services.AddScoped<FlightCollectionService>();
 
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

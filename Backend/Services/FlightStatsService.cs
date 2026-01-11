@@ -12,7 +12,8 @@ public class FlightStatsService
 
     public DateTime ConvertUtcToZurich(DateTime utc)
     {
-        return TimeZoneInfo.ConvertTimeFromUtc(utc, ZurichTimeZone);
+        var utcDateTime = DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+        return TimeZoneInfo.ConvertTimeFromUtc(utcDateTime, ZurichTimeZone);
     }
 
     public DateOnly GetBookingDateLocal(DateTime utc)

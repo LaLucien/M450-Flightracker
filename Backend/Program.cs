@@ -1,7 +1,5 @@
 using FlightTracker.Api.Services;
 using FlightTracker.Api.Services.Selenium;
-using FlightTracker.Api.Services.Background;
-using FlightTracker.Api.Infrastructure;
 using FlightTracker.Api.Infrastructure.LiteDb;
 using FlightTracker.Api.Storage.Repositories;
 
@@ -23,12 +21,12 @@ namespace FlightTracker.Api
             builder.Services.AddSingleton(new LiteDbContext("Filename=flights.db;Connection=shared"));
 
             // Repositories
-            builder.Services.AddScoped<FlightRepository>();
-            builder.Services.AddScoped<ObservationRepository>();
-            builder.Services.AddScoped<QueryRepository>();
+            builder.Services.AddScoped<IFlightRepository, FlightRepository>();
+            builder.Services.AddScoped<IObservationRepository, ObservationRepository>();
+            builder.Services.AddScoped<IQueryRepository, QueryRepository>();
 
             // Services
-            builder.Services.AddScoped<FlightStatsService>();
+            builder.Services.AddScoped<IFlightStatsService, FlightStatsService>();
             builder.Services.AddScoped<FlightCollectionService>();
             builder.Services.AddScoped<DataSeederService>();
 

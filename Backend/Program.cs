@@ -30,6 +30,7 @@ namespace FlightTracker.Api
             // Services
             builder.Services.AddScoped<FlightStatsService>();
             builder.Services.AddScoped<FlightCollectionService>();
+            builder.Services.AddScoped<DataSeederService>();
 
             // Background scheduler dependencies (disabled for now until implementation ready)
             // builder.Services.AddSingleton<ITimeProvider, SystemTimeProvider>();

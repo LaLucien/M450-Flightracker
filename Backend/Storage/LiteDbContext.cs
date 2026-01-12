@@ -18,6 +18,7 @@ public class LiteDbContext : IDisposable
         // initialize collection references
         Flights = _database.GetCollection<FlightEntity>("flights");
         Observations = _database.GetCollection<ObservationEntity>("observations");
+        Queries = _database.GetCollection<QueryEntity>("queries");
 
         // Configure indices for Flights collection
         // Unique index on (FlightNumber, DepartureDate, OriginIata, DestinationIata)
@@ -33,6 +34,8 @@ public class LiteDbContext : IDisposable
 
     public ILiteCollection<FlightEntity> Flights { get; }
     public ILiteCollection<ObservationEntity> Observations { get; }
+
+    public ILiteCollection<QueryEntity> Queries { get; }
 
     public void Dispose()
     {

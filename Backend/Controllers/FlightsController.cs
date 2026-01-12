@@ -9,21 +9,16 @@ namespace FlightTracker.Api.Controllers;
 
 [ApiController]
 [Route("api/flights")]
-public class FlightsController : ControllerBase
+public class FlightsController(
+    FlightRepository flightRepository,
+    ObservationRepository observationRepository,
+    FlightStatsService statsService,
+    QueryRepository queryRepository) : ControllerBase
 {
-    private readonly FlightRepository _flightRepository;
-    private readonly ObservationRepository _observationRepository;
-    private readonly FlightStatsService _statsService;
-
-    public FlightsController(
-        FlightRepository flightRepository,
-        ObservationRepository observationRepository,
-        FlightStatsService statsService)
-    {
-        _flightRepository = flightRepository;
-        _observationRepository = observationRepository;
-        _statsService = statsService;
-    }
+    private readonly FlightRepository _flightRepository = flightRepository;
+    private readonly ObservationRepository _observationRepository = observationRepository;
+    private readonly FlightStatsService _statsService = statsService;
+    private readonly QueryRepository _queryRepository = queryRepository;
 
     [HttpGet]
     public ActionResult<List<FlightResponseDto>> Get(
@@ -173,5 +168,18 @@ public class FlightsController : ControllerBase
         var observations = _observationRepository.GetByFlightId(flightId);
         var stats = _statsService.ComputeDaysToDepartureStats(flight, observations, bucket);
         return Ok(stats);
+    }
+
+    [HttpPost("query")]
+    public IActionResult AddNewFlightQuery(FlightQueryDto dto)
+    {
+        var entity = new QueryEntity() { 
+            DestinationIata  = dto.DestinationIata,
+            OriginIata = dto.OriginIata,
+            DepartureDate = dto.DepartureDate,
+            FlexibilityDays = dto.FlexibilityDays
+        };
+        _queryRepository.Insert(entity);
+        return Accepted();
     }
 }

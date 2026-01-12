@@ -4,7 +4,7 @@
     "Projects": [
       {
         "Path": "GoogleFlightTrackerApp\\FlightTracker.Web.csproj",
-        "Action": "StartWithoutDebugging"
+        "Action": "Start"
       },
       {
         "Path": "Backend\\FlightTracker.Api.csproj",

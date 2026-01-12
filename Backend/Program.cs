@@ -25,6 +25,7 @@ namespace FlightTracker.Api
             // Repositories
             builder.Services.AddScoped<FlightRepository>();
             builder.Services.AddScoped<ObservationRepository>();
+            builder.Services.AddScoped<QueryRepository>();
 
             // Services
             builder.Services.AddScoped<FlightStatsService>();

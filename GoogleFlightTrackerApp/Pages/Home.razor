@@ -39,27 +39,23 @@ else if (_flights != null)
     <MudTable Items="@_flights" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading">
         <HeaderContent>
             <MudTh>ID</MudTh>
+            <MudTh>Flugnummer</MudTh>
             <MudTh>Abflugort</MudTh>
             <MudTh>Zielort</MudTh>
-            <MudTh>Airline</MudTh>
             <MudTh>Datum</MudTh>
-            <MudTh>Preis (CHF)</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="ID">@context.Id</MudTd>
-            <MudTd DataLabel="Abflugort">@context.Origin</MudTd>
-            <MudTd DataLabel="Zielort">@context.Destination</MudTd>
-            <MudTd DataLabel="Airline">@context.Airline</MudTd>
-            <MudTd DataLabel="Datum">@context.DepartureDate.ToShortDateString()</MudTd>
-            <MudTd DataLabel="Preis (CHF)">
-                <MudText Color="Color.Success"><b>@context.Price.ToString("N2") CHF</b></MudText>
-            </MudTd>
+            <MudTd DataLabel="Flugnummer">@context.FlightNumber</MudTd>
+            <MudTd DataLabel="Abflugort">@context.OriginIata</MudTd>
+            <MudTd DataLabel="Zielort">@context.DestinationIata</MudTd>
+            <MudTd DataLabel="Datum">@context.DepartureDate</MudTd>
         </RowTemplate>
     </MudTable>
 }
 
 @code {
-    private List<FlightDto>? _flights;
+    private List<FlightResponseDto>? _flights;
     private bool _loading = false;
 
     private async Task OnCheckPrices()
@@ -67,14 +63,8 @@ else if (_flights != null)
         _loading = true;
         try
         {
-            var query = new FlightQueryDto
-            {
-                Origin = "ZRH",
-                Destination = "LHR",
-                DepartureDate = DateTime.Today.AddDays(7)
-            };
-
-            _flights = await FlightService.CollectAsync(query);
+            // Just fetch existing flights for now
+            _flights = await FlightService.GetLatestAsync(10);
         }
         finally
         {

@@ -16,22 +16,11 @@ namespace FlightTracker.Web.Services
             _http = http ?? throw new ArgumentNullException(nameof(http));
         }
 
-        public async Task<List<FlightDto>> CollectAsync(FlightQueryDto query)
+        public async Task<List<FlightResponseDto>> GetLatestAsync(int count = 50)
         {
-            if (query == null) throw new ArgumentNullException(nameof(query));
-
-            var response = await _http.PostAsJsonAsync("api/flights/collect", query).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            var flights = await response.Content.ReadFromJsonAsync<List<FlightDto>>().ConfigureAwait(false);
-            return flights ?? new List<FlightDto>();
-        }
-
-        public async Task<List<FlightDto>> GetLatestAsync(int count = 50)
-        {
-            var url = $"api/flights/latest?count={count}";
-            var flights = await _http.GetFromJsonAsync<List<FlightDto>>(url).ConfigureAwait(false);
-            return flights ?? new List<FlightDto>();
+            var url = $"api/flights?count={count}";
+            var flights = await _http.GetFromJsonAsync<List<FlightResponseDto>>(url).ConfigureAwait(false);
+            return flights ?? new List<FlightResponseDto>();
         }
     }
 }

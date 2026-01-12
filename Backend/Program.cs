@@ -1,5 +1,4 @@
 using FlightTracker.Api.Services;
-using FlightTracker.Api.Services.Selenium;
 using FlightTracker.Api.Infrastructure.LiteDb;
 using FlightTracker.Api.Storage.Repositories;
 
@@ -27,7 +26,6 @@ namespace FlightTracker.Api
 
             // Services
             builder.Services.AddScoped<IFlightStatsService, FlightStatsService>();
-            builder.Services.AddScoped<FlightCollectionService>();
             builder.Services.AddScoped<DataSeederService>();
 
             // Background scheduler dependencies (disabled for now until implementation ready)

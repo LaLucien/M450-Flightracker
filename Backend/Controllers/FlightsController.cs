@@ -172,10 +172,13 @@ public class FlightsController(
         {
             DestinationIata = dto.DestinationIata,
             OriginIata = dto.OriginIata,
-            DepartureDate = dto.DepartureDate,
+            AnchorDate = dto.DepartureDate,
             FlexibilityDays = dto.FlexibilityDays
         };
         _queryRepository.Insert(entity);
         return Accepted();
     }
+
+
+
 }

@@ -22,23 +22,19 @@ namespace FlightTracker.Api
             // LiteDB context (singleton)
             builder.Services.AddSingleton(new LiteDbContext("Filename=flights.db;Connection=shared"));
 
-            // Repository
-            builder.Services.AddScoped<FlightSnapshotRepository>();
+            // Repositories
+            builder.Services.AddScoped<FlightRepository>();
+            builder.Services.AddScoped<ObservationRepository>();
 
-            // Flight collection service
+            // Services
+            builder.Services.AddScoped<FlightStatsService>();
             builder.Services.AddScoped<FlightCollectionService>();
 
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddScoped<IFlightService, FlightService>();
-            builder.Services.AddScoped<IFlightProvider, GoogleFlightsSeleniumService>();
-
-            // Background scheduler dependencies
-            builder.Services.AddSingleton<ITimeProvider, SystemTimeProvider>();
-            builder.Services.AddSingleton<IScheduleConfigProvider, DefaultScheduleConfigProvider>();
-            builder.Services.AddScoped<IFlightScrapingService, DefaultFlightScrapingService>();
-
-            // Background scheduler for automated scraping
-            builder.Services.AddHostedService<ScrapeScheduler>();
+            // Background scheduler dependencies (disabled for now until implementation ready)
+            // builder.Services.AddSingleton<ITimeProvider, SystemTimeProvider>();
+            // builder.Services.AddSingleton<IScheduleConfigProvider, DefaultScheduleConfigProvider>();
+            // builder.Services.AddSingleton<IFlightScrapingService, DefaultFlightScrapingService>();
+            // builder.Services.AddHostedService<ScrapeScheduler>();
 
             builder.Services.AddCors(options =>
             {

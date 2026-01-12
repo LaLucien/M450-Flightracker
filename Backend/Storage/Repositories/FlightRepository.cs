@@ -7,7 +7,7 @@ using FlightTracker.Api.Storage.Entities;
 
 namespace FlightTracker.Api.Storage.Repositories;
 
-public class FlightRepository
+public class FlightRepository : IFlightRepository
 {
     private readonly LiteDbContext _context;
 

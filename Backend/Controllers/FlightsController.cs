@@ -10,15 +10,15 @@ namespace FlightTracker.Api.Controllers;
 [ApiController]
 [Route("api/flights")]
 public class FlightsController(
-    FlightRepository flightRepository,
-    ObservationRepository observationRepository,
-    FlightStatsService statsService,
-    QueryRepository queryRepository) : ControllerBase
+    IFlightRepository flightRepository,
+    IObservationRepository observationRepository,
+    IFlightStatsService statsService,
+    IQueryRepository queryRepository) : ControllerBase
 {
-    private readonly FlightRepository _flightRepository = flightRepository;
-    private readonly ObservationRepository _observationRepository = observationRepository;
-    private readonly FlightStatsService _statsService = statsService;
-    private readonly QueryRepository _queryRepository = queryRepository;
+    private readonly IFlightRepository _flightRepository = flightRepository;
+    private readonly IObservationRepository _observationRepository = observationRepository;
+    private readonly IFlightStatsService _statsService = statsService;
+    private readonly IQueryRepository _queryRepository = queryRepository;
 
     [HttpGet]
     public ActionResult<List<FlightResponseDto>> Get(
@@ -154,11 +154,6 @@ public class FlightsController(
         string flightId,
         [FromQuery] int bucket = 1)
     {
-        if (bucket != 1 && bucket != 3 && bucket != 7)
-        {
-            return BadRequest("Bucket must be 1, 3, or 7");
-        }
-
         var flight = _flightRepository.GetById(flightId);
         if (flight == null)
         {
@@ -173,8 +168,9 @@ public class FlightsController(
     [HttpPost("query")]
     public IActionResult AddNewFlightQuery(FlightQueryDto dto)
     {
-        var entity = new QueryEntity() { 
-            DestinationIata  = dto.DestinationIata,
+        var entity = new QueryEntity()
+        {
+            DestinationIata = dto.DestinationIata,
             OriginIata = dto.OriginIata,
             DepartureDate = dto.DepartureDate,
             FlexibilityDays = dto.FlexibilityDays

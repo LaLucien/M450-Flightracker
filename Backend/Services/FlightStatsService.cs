@@ -6,7 +6,7 @@ using FlightTracker.Contracts;
 
 namespace FlightTracker.Api.Services;
 
-public class FlightStatsService
+public class FlightStatsService : IFlightStatsService
 {
     private static readonly TimeZoneInfo ZurichTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Zurich");
 

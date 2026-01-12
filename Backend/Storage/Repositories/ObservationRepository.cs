@@ -8,7 +8,7 @@ using System.Linq.Expressions;
 
 namespace FlightTracker.Api.Storage.Repositories;
 
-public class ObservationRepository
+public class ObservationRepository : IObservationRepository
 {
     private readonly LiteDbContext _context;
 

@@ -1,3 +1,5 @@
+using AngleSharp.Text;
+using FlightTracker.Api.Models;
 using FlightTracker.Api.Storage.Entities;
 using FlightTracker.Api.Storage.Repositories;
 using OpenQA.Selenium;
@@ -18,14 +20,16 @@ namespace FlightTracker.Api.Services.Background;
 public class DefaultFlightScrapingService : IFlightScrapingService
 {
     private IWebDriver _driver;
-    private readonly QueryRepository _queryRepository;
-    private readonly ObservationRepository _observationRepository;
+    private readonly IQueryRepository _queryRepository;
+    private readonly IObservationRepository _observationRepository;
+    private readonly IFlightRepository _flightRepository;
 
 
-    public DefaultFlightScrapingService(QueryRepository queryRepository, ObservationRepository observationRepository, IConfiguration configuration)
+    public DefaultFlightScrapingService(IQueryRepository queryRepository, IObservationRepository observationRepository, IFlightRepository flightRepository, IConfiguration configuration)
     {
         _queryRepository = queryRepository;
         _observationRepository = observationRepository;
+        _flightRepository = flightRepository;
 
         new DriverManager().SetUpDriver(new ChromeConfig(), VersionResolveStrategy.MatchingBrowser);
 
@@ -42,7 +46,7 @@ public class DefaultFlightScrapingService : IFlightScrapingService
 
     }
 
-    public void Dispose()
+    ~DefaultFlightScrapingService()
     {
         _driver.Quit();
         _driver.Dispose();
@@ -75,21 +79,71 @@ public class DefaultFlightScrapingService : IFlightScrapingService
     {
         for (int flexDay = -query.FlexibilityDays; flexDay <= query.FlexibilityDays; ++flexDay)
         {
+            var departureDate = query.AnchorDate.AddDays(flexDay);
 
             // One Way Selected URL
             _driver.Navigate().GoToUrl("https://www.google.com/travel/flights?tfs=CBwQARoOagwIAhIIL20vMDg5NjZAAUgBcAGCAQsI____________AZgBAg&tfu=KgIIAw");
-            
             EnterOrigin(query.OriginIata);
             EnterDestination(query.DestinationIata);
-            EnterDeparture(query.AnchorDate.AddDays(flexDay));
+            EnterDeparture(departureDate);
             Explore();
-            Thread.Sleep(1000);
+            Thread.Sleep(500);
+
+            var flightCards = _driver.FindElements(By.XPath("//div[contains(@aria-label, \"Select flight\")]/parent::*/parent::li"));
+            foreach (var card in flightCards.Take(10))
+            {
+                ObservationEntity observation = new()
+                {
+                    ObservedAtUtc = DateTime.UtcNow
+                };
+
+                FlightEntity flight = new()
+                {
+                    OriginIata = query.OriginIata,
+                    DepartureDate = departureDate,
+                    DestinationIata = query.DestinationIata,
+
+                };
+                var priceSpan = card.FindElement(By.XPath(".//span[contains(@aria-label, \"Swiss francs\")]"));
+                var priceText = priceSpan.GetAttribute("aria-label");
+                var priceAsString = priceText?.Split(" ")[0];
+                Decimal.TryParse(priceAsString, out decimal price);
+                observation.PriceChf = price;
+
+                var CO2DivLink = card.FindElement(By.XPath(".//div[@data-travelimpactmodelwebsiteurl]")).GetAttribute("data-travelimpactmodelwebsiteurl");
+                var itenerary = CO2DivLink?.Split("=")[1];
+                var legs = itenerary?.SplitCommas();
+                var flightNumbers = legs?.Select(l => ExtractNumber(l)).ToList();
+                flight.FlightNumber = string.Join(", ", flightNumbers!);
+
+
+                _flightRepository.Insert(flight);
+                observation.FlightId = flight.Id;
+                _observationRepository.Insert(observation);
+
+
+
+
+
+
+
+
+
+
+
+            }
 
 
         }
 
 
 
+    }
+
+    private string ExtractNumber(string leg)
+    {
+        var parts = leg.Split("-");
+        return $"{parts[2]} {parts[3]}";
     }
 
     private void Explore()
@@ -105,7 +159,7 @@ public class DefaultFlightScrapingService : IFlightScrapingService
     {
         var dateField = _driver.FindElement(By.XPath("//input[@aria-label=\"Departure\"]"));
         var dateString = dateTime.ToString("MMM d");
-        
+
         new Actions(_driver)
             .Click(dateField)
             .Pause(TimeSpan.FromMilliseconds(200))
@@ -121,7 +175,7 @@ public class DefaultFlightScrapingService : IFlightScrapingService
         //new Actions(_driver)
         //    .MoveToElement(flightsText, 0, 0)
         //    .Click();
-        
+
     }
 
     private void EnterDestination(string destinationIata)
@@ -140,14 +194,14 @@ public class DefaultFlightScrapingService : IFlightScrapingService
     {
         var inputField = _driver.FindElement(By.XPath("//input[@aria-label=\"Where from?\"]"));
         new Actions(_driver)
-        .Click(inputField)                
+        .Click(inputField)
         .Pause(TimeSpan.FromMilliseconds(200))
-        .KeyDown(Keys.Control).SendKeys("a").KeyUp(Keys.Control) 
-        .SendKeys(Keys.Delete)            
+        .KeyDown(Keys.Control).SendKeys("a").KeyUp(Keys.Control)
+        .SendKeys(Keys.Delete)
         .Pause(TimeSpan.FromMilliseconds(200))
-        .SendKeys(originIata)              
+        .SendKeys(originIata)
         .Pause(TimeSpan.FromMilliseconds(500))
-        .SendKeys(Keys.Enter)              
+        .SendKeys(Keys.Enter)
         .Perform();
     }
 

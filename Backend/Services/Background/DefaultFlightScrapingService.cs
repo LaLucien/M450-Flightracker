@@ -15,7 +15,6 @@ namespace FlightTracker.Api.Services.Background;
 
 /// <summary>
 /// Default implementation that scrapes predefined flight routes
-/// TODO: Implement
 /// </summary>
 public class DefaultFlightScrapingService : IFlightScrapingService
 {
@@ -39,9 +38,9 @@ public class DefaultFlightScrapingService : IFlightScrapingService
             options.BinaryLocation = configuration["CHROME_EXE"];
         }
 
-
-
+        options.AddArgument("--headless");
         _driver = new ChromeDriver(options);
+
 
 
     }
@@ -59,10 +58,8 @@ public class DefaultFlightScrapingService : IFlightScrapingService
         var tasks = new List<Task>();
         foreach (var query in queries)
         {
-            tasks.Add(Scrape(query, cancellationToken));
+            await Scrape(query, cancellationToken);
         }
-
-        await Task.WhenAll(tasks);
 
 
 
@@ -73,12 +70,20 @@ public class DefaultFlightScrapingService : IFlightScrapingService
         _driver.Navigate().GoToUrl("https://www.google.com/travel/flights?tfs=CBwQARoOagwIAhIIL20vMDg5NjZAAUgBcAGCAQsI____________AZgBAg&tfu=KgIIAw");
         var acceptCokieBanner = _driver.FindElement(By.XPath("//button[@aria-label=\"Accept all\"]"));
         acceptCokieBanner?.Click();
+        Thread.Sleep(200);
+        
     }
 
     public async Task Scrape(QueryEntity query, CancellationToken cancellationToken)
     {
-        for (int flexDay = -query.FlexibilityDays; flexDay <= query.FlexibilityDays; ++flexDay)
+        // Input isnt necessarily trustworthy, clamp flexibility days to reasonable range also ensure that date is in the future
+        for (int flexDay = Math.Max(-query.FlexibilityDays, -10); flexDay <= Math.Min(query.FlexibilityDays, 10); ++flexDay)
         {
+            
+            if(query.AnchorDate < DateTime.UtcNow.Date.AddDays(-10) || query.AnchorDate.AddDays(flexDay) < DateTime.UtcNow.Date)
+            {
+                continue;
+            }
             var departureDate = query.AnchorDate.AddDays(flexDay);
 
             // One Way Selected URL
@@ -89,6 +94,7 @@ public class DefaultFlightScrapingService : IFlightScrapingService
             Explore();
             Thread.Sleep(500);
 
+            // Scrape top 10 results
             var flightCards = _driver.FindElements(By.XPath("//div[contains(@aria-label, \"Select flight\")]/parent::*/parent::li"));
             foreach (var card in flightCards.Take(10))
             {
@@ -104,19 +110,21 @@ public class DefaultFlightScrapingService : IFlightScrapingService
                     DestinationIata = query.DestinationIata,
 
                 };
+                //price extraction
                 var priceSpan = card.FindElement(By.XPath(".//span[contains(@aria-label, \"Swiss francs\")]"));
                 var priceText = priceSpan.GetAttribute("aria-label");
                 var priceAsString = priceText?.Split(" ")[0];
                 Decimal.TryParse(priceAsString, out decimal price);
                 observation.PriceChf = price;
 
+                //Flightnumer extraction
                 var CO2DivLink = card.FindElement(By.XPath(".//div[@data-travelimpactmodelwebsiteurl]")).GetAttribute("data-travelimpactmodelwebsiteurl");
                 var itenerary = CO2DivLink?.Split("=")[1];
                 var legs = itenerary?.SplitCommas();
                 var flightNumbers = legs?.Select(l => ExtractNumber(l)).ToList();
                 flight.FlightNumber = string.Join(", ", flightNumbers!);
 
-
+                // Insert flight and observation
                 _flightRepository.Insert(flight);
                 observation.FlightId = flight.Id;
                 _observationRepository.Insert(observation);

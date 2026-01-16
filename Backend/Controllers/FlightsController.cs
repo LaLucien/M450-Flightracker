@@ -168,11 +168,15 @@ public class FlightsController(
     [HttpPost("query")]
     public IActionResult AddNewFlightQuery(FlightQueryDto dto)
     {
+        if(dto.DepartureDate == null)
+        {
+            return BadRequest("DepartureDate is required.");
+        }
         var entity = new QueryEntity()
         {
             DestinationIata = dto.DestinationIata,
             OriginIata = dto.OriginIata,
-            AnchorDate = dto.DepartureDate,
+            AnchorDate = dto.DepartureDate.Value,
             FlexibilityDays = dto.FlexibilityDays
         };
         _queryRepository.Insert(entity);

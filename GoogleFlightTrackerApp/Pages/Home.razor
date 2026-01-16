@@ -30,6 +30,17 @@
     }
 </MudButton>
 
+<EditForm Model="queryDto" OnValidSubmit="SubmitQuery">
+    <DataAnnotationsValidator/>
+    <MudTextField @bind-Value="queryDto.OriginIata" Label="Abflugort" Required="true" />
+    <MudTextField @bind-Value="queryDto.DestinationIata" Label="Zielort" Required="true" />
+    <MudDatePicker @bind-Date="queryDto.DepartureDate" Label="Abflugdatum" Required="true" />
+    <MudNumericField @bind-Value="queryDto.FlexibilityDays" Label="Flexibilität (Tage)" Min="0" Max="7" Required="true" />
+    <MudButton Variant=Variant.Filled ButtonType="ButtonType.Submit"> Add Flight to Watch
+    
+    </MudButton>
+</EditForm>
+
 @if (_flights == null && _loading)
 {
     <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
@@ -65,6 +76,22 @@ else if (_flights != null)
         {
             // Just fetch existing flights for now
             _flights = await FlightService.GetLatestAsync(10);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private FlightQueryDto queryDto = new FlightQueryDto();
+    private async Task SubmitQuery()
+    {
+        _loading = true;
+        try
+        {
+            await FlightService.AddFlightToWatchlistAsync(queryDto);
+            queryDto = new FlightQueryDto(); // Reset form
+            
         }
         finally
         {

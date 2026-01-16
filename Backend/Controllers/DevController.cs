@@ -1,6 +1,7 @@
 using FlightTracker.Api.Services;
 using FlightTracker.Api.Services.Background;
 using FlightTracker.Api.Storage.Entities;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlightTracker.Api.Controllers
@@ -32,7 +33,7 @@ namespace FlightTracker.Api.Controllers
             }
         }
 
-        [HttpGet("testScrape")]
+        [HttpGet("DevScrape")]
         public async Task<IActionResult> TestScrape()
         {
             try
@@ -46,6 +47,21 @@ namespace FlightTracker.Api.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("ManualScrape")]
+        public async Task<IActionResult> ScrapeNow()
+        {
+            try
+            {
+                
+                await flightScraper.ScrapeFlightsAsync();
+                return Ok(new { message = "Success" });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500);
             }
         }
     }

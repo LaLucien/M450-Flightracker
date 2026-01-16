@@ -22,5 +22,10 @@ namespace FlightTracker.Web.Services
             var flights = await _http.GetFromJsonAsync<List<FlightResponseDto>>(url).ConfigureAwait(false);
             return flights ?? new List<FlightResponseDto>();
         }
+
+        public async Task AddFlightToWatchlistAsync(FlightQueryDto queryDto)
+        {
+            await _http.PostAsJsonAsync("api/flights/query", queryDto);
+        }
     }
 }

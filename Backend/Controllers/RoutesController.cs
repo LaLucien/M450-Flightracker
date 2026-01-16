@@ -10,14 +10,14 @@ namespace FlightTracker.Api.Controllers;
 [Route("api/routes")]
 public class RoutesController : ControllerBase
 {
-    private readonly FlightRepository _flightRepository;
-    private readonly ObservationRepository _observationRepository;
-    private readonly FlightStatsService _statsService;
+    private readonly IFlightRepository _flightRepository;
+    private readonly IObservationRepository _observationRepository;
+    private readonly IFlightStatsService _statsService;
 
     public RoutesController(
-        FlightRepository flightRepository,
-        ObservationRepository observationRepository,
-        FlightStatsService statsService)
+        IFlightRepository flightRepository,
+        IObservationRepository observationRepository,
+        IFlightStatsService statsService)
     {
         _flightRepository = flightRepository;
         _observationRepository = observationRepository;

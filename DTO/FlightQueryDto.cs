@@ -17,5 +17,5 @@ public class FlightQueryDto
     [Range(0, int.MaxValue)]
     public int FlexibilityDays { get; set; } = 0;
     [Required]
-    public DateTime DepartureDate { get; set; }
+    public DateTime? DepartureDate { get; set; }
 }

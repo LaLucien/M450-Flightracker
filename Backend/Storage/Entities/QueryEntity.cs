@@ -12,5 +12,5 @@ public class QueryEntity
     
     public int FlexibilityDays { get; set; } = 0;
     
-    public DateTime DepartureDate { get; set; }
+    public DateTime AnchorDate { get; set; }
 }

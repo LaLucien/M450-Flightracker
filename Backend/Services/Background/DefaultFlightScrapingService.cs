@@ -10,6 +10,7 @@ using System.Diagnostics.Metrics;
 using WebDriverManager;
 using WebDriverManager.DriverConfigs.Impl;
 using WebDriverManager.Helpers;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FlightTracker.Api.Services.Background;
 
@@ -19,16 +20,12 @@ namespace FlightTracker.Api.Services.Background;
 public class DefaultFlightScrapingService : IFlightScrapingService
 {
     private IWebDriver _driver;
-    private readonly IQueryRepository _queryRepository;
-    private readonly IObservationRepository _observationRepository;
-    private readonly IFlightRepository _flightRepository;
+    private readonly IServiceProvider _serviceProvider;
 
 
-    public DefaultFlightScrapingService(IQueryRepository queryRepository, IObservationRepository observationRepository, IFlightRepository flightRepository, IConfiguration configuration)
+    public DefaultFlightScrapingService(IServiceProvider serviceProvider, IConfiguration configuration)
     {
-        _queryRepository = queryRepository;
-        _observationRepository = observationRepository;
-        _flightRepository = flightRepository;
+        _serviceProvider = serviceProvider;
 
         new DriverManager().SetUpDriver(new ChromeConfig(), VersionResolveStrategy.MatchingBrowser);
 
@@ -53,8 +50,11 @@ public class DefaultFlightScrapingService : IFlightScrapingService
 
     public async Task ScrapeFlightsAsync(CancellationToken cancellationToken = default)
     {
+        using var scope = _serviceProvider.CreateScope();
+        var queryRepository = scope.ServiceProvider.GetRequiredService<IQueryRepository>();
+
         EnsureGoogleFlightCookiesAccepted();
-        var queries = _queryRepository.GetAll();
+        var queries = queryRepository.GetAll();
         var tasks = new List<Task>();
         foreach (var query in queries)
         {
@@ -71,16 +71,20 @@ public class DefaultFlightScrapingService : IFlightScrapingService
         var acceptCokieBanner = _driver.FindElement(By.XPath("//button[@aria-label=\"Accept all\"]"));
         acceptCokieBanner?.Click();
         Thread.Sleep(200);
-        
+
     }
 
     public async Task Scrape(QueryEntity query, CancellationToken cancellationToken)
     {
+        using var scope = _serviceProvider.CreateScope();
+        var flightRepository = scope.ServiceProvider.GetRequiredService<IFlightRepository>();
+        var observationRepository = scope.ServiceProvider.GetRequiredService<IObservationRepository>();
+
         // Input isnt necessarily trustworthy, clamp flexibility days to reasonable range also ensure that date is in the future
         for (int flexDay = Math.Max(-query.FlexibilityDays, -10); flexDay <= Math.Min(query.FlexibilityDays, 10); ++flexDay)
         {
-            
-            if(query.AnchorDate < DateTime.UtcNow.Date.AddDays(-10) || query.AnchorDate.AddDays(flexDay) < DateTime.UtcNow.Date)
+
+            if (query.AnchorDate < DateTime.UtcNow.Date.AddDays(-10) || query.AnchorDate.AddDays(flexDay) < DateTime.UtcNow.Date)
             {
                 continue;
             }
@@ -134,8 +138,9 @@ public class DefaultFlightScrapingService : IFlightScrapingService
                     };
                     _flightRepository.Insert(flight);
                 }
+                _flightRepository.Insert(flight);
                 observation.FlightId = flight.Id;
-                _observationRepository.Insert(observation);
+                observationRepository.Insert(observation);
 
 
 

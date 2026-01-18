@@ -58,9 +58,8 @@ public class ObservationRepositoryTests : IDisposable
 
         // Assert
         Assert.Equal(3, result.Count);
-        Assert.Equal(100m, result[0].PriceChf);
-        Assert.Equal(200m, result[1].PriceChf);
-        Assert.Equal(300m, result[2].PriceChf);
+        Assert.True(result[0].ObservedAtUtc <= result[1].ObservedAtUtc);
+        Assert.True(result[1].ObservedAtUtc <= result[2].ObservedAtUtc);
     }
 
     [Fact]
@@ -279,9 +278,9 @@ public class ObservationRepositoryTests : IDisposable
 
         // Act
         _repository.Insert(observation);
+        var retrieved = _repository.GetByFlightId(flight.Id.ToString());
 
         // Assert
-        var retrieved = _repository.GetByFlightId(flight.Id.ToString());
         Assert.Single(retrieved);
         Assert.Equal(250m, retrieved[0].PriceChf);
     }
@@ -322,9 +321,9 @@ public class ObservationRepositoryTests : IDisposable
 
         // Act
         _repository.InsertMany(observations);
+        var retrieved = _repository.GetByFlightId(flight.Id.ToString());
 
         // Assert
-        var retrieved = _repository.GetByFlightId(flight.Id.ToString());
         Assert.Equal(3, retrieved.Count);
     }
 

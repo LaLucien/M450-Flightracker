@@ -35,9 +35,7 @@ public class FlightRepositoryTests : IDisposable
         var result = _repository.GetById(flight.Id.ToString());
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(flight.Id, result.Id);
-        Assert.Equal("LX123", result.FlightNumber);
+        Assert.Equivalent(flight, result);
     }
 
     [Fact]
@@ -174,9 +172,10 @@ public class FlightRepositoryTests : IDisposable
     {
         // Arrange
         var date = new DateTime(2026, 1, 15);
-        CreateAndInsertFlight("LX123", "ZRH", "JFK", date);
+        var correctFlight = CreateAndInsertFlight("LX123", "ZRH", "JFK", date);
         CreateAndInsertFlight("LX123", "ZRH", "LHR", date);
         CreateAndInsertFlight("LX123", "ZRH", "JFK", new DateTime(2026, 1, 20));
+        var expected = new List<FlightEntity> { correctFlight };
 
         // Act
         var result = _repository.Query(
@@ -186,10 +185,7 @@ public class FlightRepositoryTests : IDisposable
             flightNumber: "LX123");
 
         // Assert
-        Assert.Single(result);
-        Assert.Equal("ZRH", result[0].OriginIata);
-        Assert.Equal("JFK", result[0].DestinationIata);
-        Assert.Equal(date.Date, result[0].DepartureDate.Date);
+        Assert.Equivalent(expected, result);
     }
 
     [Fact]
@@ -228,16 +224,13 @@ public class FlightRepositoryTests : IDisposable
     {
         // Arrange
         var date = new DateTime(2026, 1, 15, 10, 30, 0);
-        CreateAndInsertFlight("LX123", "ZRH", "JFK", date);
+        var expected = CreateAndInsertFlight("LX123", "ZRH", "JFK", date);
 
         // Act
         var result = _repository.FindUnique("LX123", date, "ZRH", "JFK");
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal("LX123", result.FlightNumber);
-        Assert.Equal("ZRH", result.OriginIata);
-        Assert.Equal("JFK", result.DestinationIata);
+        Assert.Equivalent(expected, result);
     }
 
     [Fact]
@@ -305,14 +298,13 @@ public class FlightRepositoryTests : IDisposable
         var date1 = new DateTime(2026, 1, 15);
         var date2 = new DateTime(2026, 1, 16);
         CreateAndInsertFlight("LX123", "ZRH", "JFK", date1);
-        CreateAndInsertFlight("LX123", "ZRH", "JFK", date2);
+        var expected = CreateAndInsertFlight("LX123", "ZRH", "JFK", date2);
 
         // Act
         var result = _repository.FindUnique("LX123", date2, "ZRH", "JFK");
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(date2.Date, result.DepartureDate.Date);
+        Assert.Equivalent(expected, result);
     }
 
     #endregion
@@ -323,21 +315,13 @@ public class FlightRepositoryTests : IDisposable
     public void Insert_ValidFlight_ShouldAddToDatabase()
     {
         // Arrange
-        var flight = new FlightEntity
-        {
-            FlightNumber = "LX123",
-            DepartureDate = new DateTime(2026, 1, 15),
-            OriginIata = "ZRH",
-            DestinationIata = "JFK"
-        };
+        var flight = CreateAndInsertFlight("LX123", "ZRH", "JFK");
 
         // Act
-        _repository.Insert(flight);
+        var result = _repository.GetById(flight.Id.ToString());
 
         // Assert
-        var retrieved = _repository.GetById(flight.Id.ToString());
-        Assert.NotNull(retrieved);
-        Assert.Equal("LX123", retrieved.FlightNumber);
+        Assert.Equivalent(flight, result);
     }
 
     [Fact]
@@ -356,9 +340,9 @@ public class FlightRepositoryTests : IDisposable
 
         // Act
         _repository.Update(flight);
+        var retrieved = _repository.GetById(flight.Id.ToString());
 
         // Assert
-        var retrieved = _repository.GetById(flight.Id.ToString());
         Assert.Equal("LX999", retrieved.FlightNumber);
     }
 

@@ -7,4 +7,5 @@ public interface IQueryRepository
 {
     List<QueryEntity> GetAll();
     void Insert(QueryEntity entity);
+    bool Delete(string id);
 }

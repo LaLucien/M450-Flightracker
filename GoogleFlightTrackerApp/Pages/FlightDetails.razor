@@ -1,0 +1,345 @@
+﻿@page "/flights/{id}"
+@using FlightTracker.Contracts
+@using MudBlazor
+@using System.Linq
+@inject FlightTracker.Web.Services.FlightService FlightService
+@inject ISnackbar Snackbar
+@inject FlightTracker.Web.Services.UiRefreshService UiRefreshService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Flight details</PageTitle>
+
+<MudContainer Class="mt-4">
+ <MudPaper Class="pa-6" Elevation="1">
+ @if (_loading)
+ {
+ <div class="d-flex justify-content-center my-8">
+ <MudProgressCircular Size="Size.Large" Indeterminate="true" />
+ </div>
+ }
+ else if (_flight == null)
+ {
+ <MudText>No flight found</MudText>
+ }
+ else
+ {
+ <MudStack Spacing="3">
+ <!-- Header -->
+ <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" JustifyContent="Justify.SpaceBetween">
+ <MudText Typo="Typo.h4">Flight details</MudText>
+ <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+ <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@RefreshPage">Refresh</MudButton>
+ <MudButton Variant="Variant.Text" OnClick="@NavigateBack">Back to search</MudButton>
+ </MudStack>
+ </MudStack>
+
+ <!-- Summary cards -->
+ <MudGrid GutterSize="3">
+ <MudItem xs="12" sm="6" md="4" lg="2">
+ <MudPaper Class="pa-3" Elevation="0">
+ <MudText Typo="Typo.subtitle2" Color="Color.Primary">Flight number</MudText>
+ <MudText Typo="Typo.h6">@_flight.FlightNumber</MudText>
+ </MudPaper>
+ </MudItem>
+ <MudItem xs="12" sm="6" md="4" lg="3">
+ <MudPaper Class="pa-3" Elevation="0">
+ <MudText Typo="Typo.subtitle2" Color="Color.Primary">Route</MudText>
+ <MudText Typo="Typo.h6">@_flight.OriginIata → @_flight.DestinationIata</MudText>
+ </MudPaper>
+ </MudItem>
+ <MudItem xs="12" sm="6" md="4" lg="2">
+ <MudPaper Class="pa-3" Elevation="0">
+ <MudText Typo="Typo.subtitle2" Color="Color.Primary">Departure</MudText>
+ <MudText Typo="Typo.h6">@_flight.DepartureDate</MudText>
+ </MudPaper>
+ </MudItem>
+ <MudItem xs="12" sm="6" md="6" lg="2">
+ <MudPaper Class="pa-3" Elevation="0">
+ <MudText Typo="Typo.subtitle2" Color="Color.Primary">Last price (CHF)</MudText>
+ <MudText Typo="Typo.h6">@((LastPrice.HasValue) ? LastPrice.Value.ToString("0.##") : "-")</MudText>
+ </MudPaper>
+ </MudItem>
+ <MudItem xs="12" sm="6" md="6" lg="2">
+ <MudPaper Class="pa-3" Elevation="0">
+ <MudText Typo="Typo.subtitle2" Color="Color.Primary">Observations</MudText>
+ <MudText Typo="Typo.h6">@ObservationsCount</MudText>
+ </MudPaper>
+ </MudItem>
+ </MudGrid>
+
+ <MudDivider />
+
+ <!-- Observations -->
+ <MudCard Class="pa-4 mb-4" Elevation="0">
+ <MudStack Spacing="1">
+ <MudText Typo="Typo.h6">Observations</MudText>
+ <MudText Typo="Typo.caption">All recorded observations for this flight (local time).</MudText>
+
+ <MudPaper Class="pa-2 mt-2" Style="overflow:auto">
+ @if (_observations == null || !_observations.Any())
+ {
+ <div class="py-4 text-center">
+ <MudText>No observations</MudText>
+ </div>
+ }
+ else
+ {
+ <MudTable Items="@_observations" Hover="true" Bordered="true" Striped="true" Dense="false" Style="min-width:700px;">
+ <HeaderContent>
+ <MudTh>Observed (local)</MudTh>
+ <MudTh>Price (CHF)</MudTh>
+ <MudTh></MudTh>
+ </HeaderContent>
+ <RowTemplate>
+ <MudTd>@context.ObservedAtLocal.ToString("yyyy-MM-dd HH:mm")</MudTd>
+ <MudTd>@context.PriceChf</MudTd>
+ <MudTd>
+ <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SearchFromObservation(context))">Search</MudButton>
+ </MudTd>
+ </RowTemplate>
+ </MudTable>
+ }
+ </MudPaper>
+ </MudStack>
+ </MudCard>
+
+ <!-- Weekday stats -->
+ <MudCard Class="pa-4 mb-4" Elevation="0">
+ <MudStack Spacing="1">
+ <MudText Typo="Typo.h6">Weekday stats</MudText>
+ <MudText Typo="Typo.caption">Aggregate statistics by weekday.</MudText>
+
+ <MudPaper Class="pa-2 mt-2" Style="overflow:auto">
+ @if (_weekdayStats == null || _weekdayStats.Series == null || !_weekdayStats.Series.Any())
+ {
+ <div class="py-4 text-center">
+ <MudText>No data</MudText>
+ </div>
+ }
+ else
+ {
+ <MudTable Items="@_weekdayStats.Series" Hover="true" Bordered="true" Striped="true" Dense="false" Style="min-width:700px;">
+ <HeaderContent>
+ <MudTh>Weekday</MudTh>
+ <MudTh>Min</MudTh>
+ <MudTh>Max</MudTh>
+ <MudTh>Avg</MudTh>
+ <MudTh>Median</MudTh>
+ <MudTh>Count</MudTh>
+ </HeaderContent>
+ <RowTemplate>
+ <MudTd>@context.Label</MudTd>
+ <MudTd>@(context.Min?.ToString() ?? "-")</MudTd>
+ <MudTd>@(context.Max?.ToString() ?? "-")</MudTd>
+ <MudTd>@(context.Avg?.ToString("0.##") ?? "-")</MudTd>
+ <MudTd>@(context.Median?.ToString() ?? "-")</MudTd>
+ <MudTd>@context.Count</MudTd>
+ </RowTemplate>
+ </MudTable>
+ }
+ </MudPaper>
+ </MudStack>
+ </MudCard>
+
+ <!-- Booking date stats -->
+ <MudCard Class="pa-4 mb-4" Elevation="0">
+ <MudStack Spacing="1">
+ <MudText Typo="Typo.h6">Booking date stats</MudText>
+ <MudText Typo="Typo.caption">Statistics aggregated by booking date.</MudText>
+
+ <MudStack Row="true" Spacing="2" Class="mt-2">
+ <MudDatePicker @bind-Date="_bookingFrom" DateFormat="yyyy-MM-dd" Label="From" />
+ <MudDatePicker @bind-Date="_bookingTo" DateFormat="yyyy-MM-dd" Label="To" />
+ <MudButton Variant="Variant.Filled" OnClick="@LoadBookingDateStats">Refresh</MudButton>
+ </MudStack>
+
+ <MudPaper Class="pa-2 mt-2" Style="overflow:auto">
+ @if (_bookingStats == null || _bookingStats.Series == null || !_bookingStats.Series.Any())
+ {
+ <div class="py-4 text-center">
+ <MudText>No data</MudText>
+ </div>
+ }
+ else
+ {
+ <MudTable Items="@_bookingStats.Series" Hover="true" Bordered="true" Striped="true" Dense="false" Style="min-width:700px;">
+ <HeaderContent>
+ <MudTh>Date</MudTh>
+ <MudTh>Min</MudTh>
+ <MudTh>Max</MudTh>
+ <MudTh>Avg</MudTh>
+ <MudTh>Median</MudTh>
+ <MudTh>Count</MudTh>
+ </HeaderContent>
+ <RowTemplate>
+ <MudTd>@context.Date</MudTd>
+ <MudTd>@(context.Min?.ToString() ?? "-")</MudTd>
+ <MudTd>@(context.Max?.ToString() ?? "-")</MudTd>
+ <MudTd>@(context.Avg?.ToString("0.##") ?? "-")</MudTd>
+ <MudTd>@(context.Median?.ToString() ?? "-")</MudTd>
+ <MudTd>@context.Count</MudTd>
+ </RowTemplate>
+ </MudTable>
+ }
+ </MudPaper>
+ </MudStack>
+ </MudCard>
+
+ <!-- Days to departure stats -->
+ <MudCard Class="pa-4 mb-4" Elevation="0">
+ <MudStack Spacing="1">
+ <MudText Typo="Typo.h6">Days to departure stats</MudText>
+ <MudText Typo="Typo.caption">Distribution of prices by days to departure.</MudText>
+
+ <MudStack Row="true" Spacing="2" Class="mt-2">
+ <MudTextField @bind-Value="_bucketString" Label="Bucket size (days)" />
+ <MudButton Variant="Variant.Filled" OnClick="@LoadDaysToDepartureStats">Refresh</MudButton>
+ </MudStack>
+
+ <MudPaper Class="pa-2 mt-2" Style="overflow:auto">
+ @if (_daysStats == null || _daysStats.Series == null || !_daysStats.Series.Any())
+ {
+ <div class="py-4 text-center">
+ <MudText>No data</MudText>
+ </div>
+ }
+ else
+ {
+ <MudTable Items="@_daysStats.Series" Hover="true" Bordered="true" Striped="true" Dense="false" Style="min-width:700px;">
+ <HeaderContent>
+ <MudTh>From</MudTh>
+ <MudTh>To</MudTh>
+ <MudTh>Min</MudTh>
+ <MudTh>Max</MudTh>
+ <MudTh>Avg</MudTh>
+ <MudTh>Median</MudTh>
+ <MudTh>Count</MudTh>
+ </HeaderContent>
+ <RowTemplate>
+ <MudTd>@context.DaysFrom</MudTd>
+ <MudTd>@context.DaysTo</MudTd>
+ <MudTd>@(context.Min?.ToString() ?? "-")</MudTd>
+ <MudTd>@(context.Max?.ToString() ?? "-")</MudTd>
+ <MudTd>@(context.Avg?.ToString("0.##") ?? "-")</MudTd>
+ <MudTd>@(context.Median?.ToString() ?? "-")</MudTd>
+ <MudTd>@context.Count</MudTd>
+ </RowTemplate>
+ </MudTable>
+ }
+ </MudPaper>
+ </MudStack>
+ </MudCard>
+
+ </MudStack>
+ }
+ </MudPaper>
+</MudContainer>
+
+@code {
+ [Parameter]
+ public string id { get; set; } = string.Empty;
+
+ private FlightResponseDto? _flight;
+ private List<ObservationResponseDto> _observations = new();
+ private WeekdayStatsResponseDto? _weekdayStats;
+ private BookingDateStatsResponseDto? _bookingStats;
+ private DaysToDepartureStatsResponseDto? _daysStats;
+
+ private bool _loading = true;
+
+ private DateTime? _bookingFrom;
+ private DateTime? _bookingTo;
+ private string _bucketString = "1";
+
+ protected override async Task OnInitializedAsync()
+ {
+ UiRefreshService.RefreshRequested += HandleRefresh;
+ await LoadAllAsync();
+ }
+
+ public void Dispose()
+ {
+ UiRefreshService.RefreshRequested -= HandleRefresh;
+ }
+
+ private async Task HandleRefresh()
+ {
+ await LoadAllAsync();
+ StateHasChanged();
+ }
+
+ private async Task LoadAllAsync()
+ {
+ _loading = true;
+ try
+ {
+ _flight = await FlightService.GetFlightByIdAsync(id);
+ if (_flight == null)
+ {
+ Snackbar.Add("Flight not found", Severity.Warning);
+ return;
+ }
+
+ _observations = await FlightService.GetObservationsAsync(id);
+ _weekdayStats = await FlightService.GetWeekdayStatsAsync(id);
+ // default booking window: last90 days
+ _bookingFrom = DateTime.Today.AddDays(-90);
+ _bookingTo = DateTime.Today;
+ await LoadBookingDateStats();
+ await LoadDaysToDepartureStats();
+ }
+ catch (Exception ex)
+ {
+ Snackbar.Add($"Failed to load flight details: {ex.Message}", Severity.Error);
+ }
+ finally
+ {
+ _loading = false;
+ }
+ }
+
+ private async Task LoadBookingDateStats()
+ {
+ if (_flight == null) return;
+ string from = _bookingFrom?.ToString("yyyy-MM-dd") ?? string.Empty;
+ string to = _bookingTo?.ToString("yyyy-MM-dd") ?? string.Empty;
+ _bookingStats = await FlightService.GetBookingDateStatsAsync(id, from, to);
+ }
+
+ private async Task LoadDaysToDepartureStats()
+ {
+ if (_flight == null) return;
+ if (!int.TryParse(_bucketString, out var bucket) || bucket <=0)
+ {
+ Snackbar.Add("Bucket must be a positive integer", Severity.Warning);
+ return;
+ }
+
+ _daysStats = await FlightService.GetDaysToDepartureStatsAsync(id, bucket);
+ }
+
+ private void SearchFromObservation(ObservationResponseDto obs)
+ {
+ if (_flight == null) return;
+ var origin = Uri.EscapeDataString(_flight.OriginIata ?? string.Empty);
+ var dest = Uri.EscapeDataString(_flight.DestinationIata ?? string.Empty);
+ // FlightResponseDto.DepartureDate is a string in YYYY-MM-DD format
+ var dep = Uri.EscapeDataString(_flight.DepartureDate ?? string.Empty);
+ var url = $"/flights?origin={origin}&destination={dest}&departure_date={dep}";
+ NavigationManager.NavigateTo(url);
+ }
+
+ // UI-only derived properties
+ private decimal? LastPrice => _observations?.OrderByDescending(o => o.ObservedAtLocal).FirstOrDefault()?.PriceChf;
+ private int ObservationsCount => _observations?.Count ??0;
+
+ private void RefreshPage()
+ {
+ NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+ }
+
+ private void NavigateBack()
+ {
+ NavigationManager.NavigateTo("/flights");
+ }
+}

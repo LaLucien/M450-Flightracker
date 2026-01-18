@@ -2,100 +2,102 @@
 @using FlightTracker.Contracts
 @using MudBlazor
 @inject FlightTracker.Web.Services.FlightService FlightService
+@inject ISnackbar Snackbar
+@inject FlightTracker.Web.Services.UiRefreshService UiRefreshService
 
 <PageTitle>Flugpreis-Tracker</PageTitle>
 
 <MudText Typo="Typo.h3" GutterBottom="true">Flugpreis-Tracker</MudText>
 
 <MudCard Class="mb-4">
-    <MudCardContent>
-        <MudText>Klicken Sie auf den Button, um die aktuellen Preise abzurufen.</MudText>
-    </MudCardContent>
+ <MudCardContent>
+ <MudText>Verwalte deine Beobachtungen und durchschaue bestehende Flüge.</MudText>
+ </MudCardContent>
 </MudCard>
 
-<MudButton Variant="Variant.Filled" 
-           Color="Color.Primary" 
-           OnClick="OnCheckPrices" 
-           Disabled="@_loading"
-           StartIcon="@Icons.Material.Filled.Search"
-           Class="mb-4">
-    @if (_loading)
-    {
-        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-        <MudText Class="ms-2">Daten werden geladen...</MudText>
-    }
-    else
-    {
-        <MudText>Preise prüfen</MudText>
-    }
-</MudButton>
+<div class="mb-4 d-flex gap-2">
+ <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnManualScrape" Disabled="_manualLoading">
+ @if (_manualLoading)
+ {
+ <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+ <span>Starting…</span>
+ }
+ else
+ {
+ <span>Manual scrape</span>
+ }
+ </MudButton>
+ <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="OnSeedData" Disabled="_seedLoading">
+ @if (_seedLoading)
+ {
+ <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+ <span>Seeding…</span>
+ }
+ else
+ {
+ <span>Seed data</span>
+ }
+ </MudButton>
+</div>
 
-<EditForm Model="queryDto" OnValidSubmit="SubmitQuery">
-    <DataAnnotationsValidator/>
-    <MudTextField @bind-Value="queryDto.OriginIata" Label="Abflugort" Required="true" />
-    <MudTextField @bind-Value="queryDto.DestinationIata" Label="Zielort" Required="true" />
-    <MudDatePicker @bind-Date="queryDto.DepartureDate" Label="Abflugdatum" Required="true" />
-    <MudNumericField @bind-Value="queryDto.FlexibilityDays" Label="Flexibilität (Tage)" Min="0" Max="7" Required="true" />
-    <MudButton Variant=Variant.Filled ButtonType="ButtonType.Submit"> Add Flight to Watch
-    
-    </MudButton>
-</EditForm>
+<!-- Reuse existing components -->
+<FlightWatchForm />
 
-@if (_flights == null && _loading)
-{
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
-}
-else if (_flights != null)
-{
-    <MudTable Items="@_flights" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading">
-        <HeaderContent>
-            <MudTh>ID</MudTh>
-            <MudTh>Flugnummer</MudTh>
-            <MudTh>Abflugort</MudTh>
-            <MudTh>Zielort</MudTh>
-            <MudTh>Datum</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd DataLabel="ID">@context.Id</MudTd>
-            <MudTd DataLabel="Flugnummer">@context.FlightNumber</MudTd>
-            <MudTd DataLabel="Abflugort">@context.OriginIata</MudTd>
-            <MudTd DataLabel="Zielort">@context.DestinationIata</MudTd>
-            <MudTd DataLabel="Datum">@context.DepartureDate</MudTd>
-        </RowTemplate>
-    </MudTable>
-}
+<MudDivider Class="my-4" />
+
+<FlexStats />
 
 @code {
-    private List<FlightResponseDto>? _flights;
-    private bool _loading = false;
+ private bool _manualLoading = false;
+ private bool _seedLoading = false;
 
-    private async Task OnCheckPrices()
-    {
-        _loading = true;
-        try
-        {
-            // Just fetch existing flights for now
-            _flights = await FlightService.GetLatestAsync(10);
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
+ private async Task OnManualScrape()
+ {
+ _manualLoading = true;
+ // show immediate feedback
+ Snackbar.Add("Manual scrape started", Severity.Info);
+ try
+ {
+ var ok = await FlightService.TriggerManualScrapeAsync();
+ if (ok)
+ {
+ Snackbar.Add("Manual scrape completed", Severity.Success);
+ // ask Flights component to refresh
+ await UiRefreshService.RequestRefreshAsync();
+ }
+ else
+ {
+ Snackbar.Add("Manual scrape failed", Severity.Error);
+ }
+ }
+ catch
+ {
+ Snackbar.Add("Failed to trigger manual scrape", Severity.Error);
+ }
+ finally
+ {
+ _manualLoading = false;
+ }
+ }
 
-    private FlightQueryDto queryDto = new FlightQueryDto();
-    private async Task SubmitQuery()
-    {
-        _loading = true;
-        try
-        {
-            await FlightService.AddFlightToWatchlistAsync(queryDto);
-            queryDto = new FlightQueryDto(); // Reset form
-            
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
+ private async Task OnSeedData()
+ {
+ _seedLoading = true;
+ try
+ {
+ var resp = await FlightService.TriggerSeedAsync();
+ if (resp)
+ Snackbar.Add("Seeded sample data", Severity.Success);
+ else
+ Snackbar.Add("Seed failed", Severity.Error);
+ }
+ catch
+ {
+ Snackbar.Add("Seed failed", Severity.Error);
+ }
+ finally
+ {
+ _seedLoading = false;
+ }
+ }
 }

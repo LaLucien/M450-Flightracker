@@ -1,5 +1,6 @@
 using FlightTracker.Api.Services;
 using FlightTracker.Api.Storage.Entities;
+using FlightTracker.Contracts;
 using LiteDB;
 using Xunit;
 
@@ -17,7 +18,7 @@ public class FlightStatsServiceTests
     #region Timezone and Date Conversion Tests
 
     [Fact]
-    public void ConvertUtcToZurich_ShouldConvertCorrectly_WinterTime()
+    public void ConvertUtcToZurich_WinterTime_ShouldConvertCorrectly()
     {
         // Arrange - January is winter time (UTC+1)
         var utc = new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -30,7 +31,7 @@ public class FlightStatsServiceTests
     }
 
     [Fact]
-    public void ConvertUtcToZurich_ShouldConvertCorrectly_SummerTime()
+    public void ConvertUtcToZurich_SummerTime_ShouldConvertCorrectly()
     {
         // Arrange - July is summer time (UTC+2)
         var utc = new DateTime(2026, 7, 15, 10, 0, 0, DateTimeKind.Utc);
@@ -219,16 +220,20 @@ public class FlightStatsServiceTests
     {
         // Arrange
         var prices = new List<decimal> { 100m, 200m, 300m, 400m, 500m };
+        var expected = new StatsAggregateDto
+        {
+            Min = 100m,
+            Max = 500m,
+            Avg = 300m,
+            Median = 300m,
+            Count = 5
+        };
 
         // Act
         var result = _service.AggregateStats(prices);
 
         // Assert
-        Assert.Equal(100m, result.Min);
-        Assert.Equal(500m, result.Max);
-        Assert.Equal(300m, result.Avg);
-        Assert.Equal(300m, result.Median);
-        Assert.Equal(5, result.Count);
+        Assert.Equivalent(expected, result);
     }
 
     [Fact]
@@ -236,16 +241,20 @@ public class FlightStatsServiceTests
     {
         // Arrange
         var prices = new List<decimal>();
+        var expected = new StatsAggregateDto
+        {
+            Min = null,
+            Max = null,
+            Avg = null,
+            Median = null,
+            Count = 0
+        };
 
         // Act
         var result = _service.AggregateStats(prices);
 
         // Assert
-        Assert.Null(result.Min);
-        Assert.Null(result.Max);
-        Assert.Null(result.Avg);
-        Assert.Null(result.Median);
-        Assert.Equal(0, result.Count);
+        Assert.Equivalent(expected, result);
     }
 
     #endregion
@@ -253,7 +262,7 @@ public class FlightStatsServiceTests
     #region ComputeWeekdayStats Tests
 
     [Fact]
-    public void ComputeWeekdayStats_ShouldGroupByWeekday()
+    public void ComputeWeekdayStats_ShouldGroupByWeekday_Monday()
     {
         // Arrange
         var flight = CreateTestFlight();
@@ -262,27 +271,72 @@ public class FlightStatsServiceTests
             // Monday observations (2026-01-12)
             CreateObservation(flight.Id, new DateTime(2026, 1, 12, 10, 0, 0, DateTimeKind.Utc), 100m),
             CreateObservation(flight.Id, new DateTime(2026, 1, 12, 14, 0, 0, DateTimeKind.Utc), 150m),
-            // Tuesday observation (2026-01-13)
-            CreateObservation(flight.Id, new DateTime(2026, 1, 13, 10, 0, 0, DateTimeKind.Utc), 200m),
+        };
+
+        var expectedMonday = new WeekdayStatsBucketDto
+        {
+            Weekday = 1,
+            Label = "Mon",
+            Count = 2,
+            Min = 100m,
+            Max = 150m,
+            Avg = 125m,
+            Median = 125m
         };
 
         // Act
         var result = _service.ComputeWeekdayStats(flight, observations);
 
         // Assert
-        Assert.Equal(7, result.Series.Count); // All 7 days should be present
-
         var monday = result.Series.First(s => s.Weekday == 1);
-        Assert.Equal("Mon", monday.Label);
-        Assert.Equal(2, monday.Count);
-        Assert.Equal(100m, monday.Min);
-        Assert.Equal(150m, monday.Max);
-        Assert.Equal(125m, monday.Avg);
+        Assert.Equivalent(expectedMonday, monday);
+    }
 
+    [Fact]
+    public void ComputeWeekdayStats_ShouldGroupByWeekday_Tuesday()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        var observations = new List<ObservationEntity>
+        {
+            // Tuesday observation (2026-01-13)
+            CreateObservation(flight.Id, new DateTime(2026, 1, 13, 10, 0, 0, DateTimeKind.Utc), 200m),
+        };
+
+        var expectedTuesday = new WeekdayStatsBucketDto
+        {
+            Weekday = 2,
+            Label = "Tue",
+            Count = 1,
+            Min = 200m,
+            Max = 200m,
+            Avg = 200m,
+            Median = 200m
+        };
+
+        // Act
+        var result = _service.ComputeWeekdayStats(flight, observations);
+
+        // Assert
         var tuesday = result.Series.First(s => s.Weekday == 2);
-        Assert.Equal("Tue", tuesday.Label);
-        Assert.Equal(1, tuesday.Count);
-        Assert.Equal(200m, tuesday.Min);
+        Assert.Equivalent(expectedTuesday, tuesday);
+    }
+
+    [Fact]
+    public void ComputeWeekdayStats_ShouldReturnAllSevenWeekdays()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        var observations = new List<ObservationEntity>
+        {
+            CreateObservation(flight.Id, new DateTime(2026, 1, 12, 10, 0, 0, DateTimeKind.Utc), 100m),
+        };
+
+        // Act
+        var result = _service.ComputeWeekdayStats(flight, observations);
+
+        // Assert
+        Assert.Equal(7, result.Series.Count);
     }
 
     [Fact]
@@ -298,6 +352,19 @@ public class FlightStatsServiceTests
         // Assert
         Assert.Equal(7, result.Series.Count);
         Assert.All(result.Series, bucket => Assert.Equal(0, bucket.Count));
+    }
+
+    [Fact]
+    public void ComputeWeekdayStats_EmptyObservations_ShouldHaveNullStats()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        var observations = new List<ObservationEntity>();
+
+        // Act
+        var result = _service.ComputeWeekdayStats(flight, observations);
+
+        // Assert
         Assert.All(result.Series, bucket => Assert.Null(bucket.Min));
     }
 
@@ -306,7 +373,7 @@ public class FlightStatsServiceTests
     #region ComputeBookingDateStats Tests
 
     [Fact]
-    public void ComputeBookingDateStats_ShouldGroupByDate()
+    public void ComputeBookingDateStats_ShouldGroupByDate_FirstDay()
     {
         // Arrange
         var flight = CreateTestFlight();
@@ -314,30 +381,54 @@ public class FlightStatsServiceTests
         {
             CreateObservation(flight.Id, new DateTime(2026, 1, 10, 8, 0, 0, DateTimeKind.Utc), 100m),
             CreateObservation(flight.Id, new DateTime(2026, 1, 10, 14, 0, 0, DateTimeKind.Utc), 120m),
-            CreateObservation(flight.Id, new DateTime(2026, 1, 11, 10, 0, 0, DateTimeKind.Utc), 150m),
+        };
+
+        var expectedFirstDay = new BookingDateStatsBucketDto
+        {
+            Date = "2026-01-10",
+            Count = 2,
+            Min = 100m,
+            Max = 120m,
+            Avg = 110m,
+            Median = 110m
         };
 
         // Act
         var result = _service.ComputeBookingDateStats(flight, observations);
 
         // Assert
-        Assert.Equal(2, result.Series.Count);
-
-        var firstDay = result.Series[0];
-        Assert.Equal("2026-01-10", firstDay.Date);
-        Assert.Equal(2, firstDay.Count);
-        Assert.Equal(100m, firstDay.Min);
-        Assert.Equal(120m, firstDay.Max);
-        Assert.Equal(110m, firstDay.Avg);
-
-        var secondDay = result.Series[1];
-        Assert.Equal("2026-01-11", secondDay.Date);
-        Assert.Equal(1, secondDay.Count);
-        Assert.Equal(150m, secondDay.Min);
+        Assert.Equivalent(expectedFirstDay, result.Series[0]);
     }
 
     [Fact]
-    public void ComputeBookingDateStats_ShouldOrderByDate()
+    public void ComputeBookingDateStats_ShouldGroupByDate_SecondDay()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        var observations = new List<ObservationEntity>
+        {
+            CreateObservation(flight.Id, new DateTime(2026, 1, 11, 10, 0, 0, DateTimeKind.Utc), 150m),
+        };
+
+        var expectedSecondDay = new BookingDateStatsBucketDto
+        {
+            Date = "2026-01-11",
+            Count = 1,
+            Min = 150m,
+            Max = 150m,
+            Avg = 150m,
+            Median = 150m
+        };
+
+        // Act
+        var result = _service.ComputeBookingDateStats(flight, observations);
+
+        // Assert
+        Assert.Equivalent(expectedSecondDay, result.Series[0]);
+    }
+
+    [Fact]
+    public void ComputeBookingDateStats_ShouldOrderByDate_Count()
     {
         // Arrange
         var flight = CreateTestFlight();
@@ -353,8 +444,62 @@ public class FlightStatsServiceTests
 
         // Assert
         Assert.Equal(3, result.Series.Count);
+    }
+
+    [Fact]
+    public void ComputeBookingDateStats_ShouldOrderByDate_FirstDate()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        var observations = new List<ObservationEntity>
+        {
+            CreateObservation(flight.Id, new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc), 300m),
+            CreateObservation(flight.Id, new DateTime(2026, 1, 10, 10, 0, 0, DateTimeKind.Utc), 100m),
+            CreateObservation(flight.Id, new DateTime(2026, 1, 12, 10, 0, 0, DateTimeKind.Utc), 200m),
+        };
+
+        // Act
+        var result = _service.ComputeBookingDateStats(flight, observations);
+
+        // Assert
         Assert.Equal("2026-01-10", result.Series[0].Date);
+    }
+
+    [Fact]
+    public void ComputeBookingDateStats_ShouldOrderByDate_SecondDate()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        var observations = new List<ObservationEntity>
+        {
+            CreateObservation(flight.Id, new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc), 300m),
+            CreateObservation(flight.Id, new DateTime(2026, 1, 10, 10, 0, 0, DateTimeKind.Utc), 100m),
+            CreateObservation(flight.Id, new DateTime(2026, 1, 12, 10, 0, 0, DateTimeKind.Utc), 200m),
+        };
+
+        // Act
+        var result = _service.ComputeBookingDateStats(flight, observations);
+
+        // Assert
         Assert.Equal("2026-01-12", result.Series[1].Date);
+    }
+
+    [Fact]
+    public void ComputeBookingDateStats_ShouldOrderByDate_ThirdDate()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        var observations = new List<ObservationEntity>
+        {
+            CreateObservation(flight.Id, new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc), 300m),
+            CreateObservation(flight.Id, new DateTime(2026, 1, 10, 10, 0, 0, DateTimeKind.Utc), 100m),
+            CreateObservation(flight.Id, new DateTime(2026, 1, 12, 10, 0, 0, DateTimeKind.Utc), 200m),
+        };
+
+        // Act
+        var result = _service.ComputeBookingDateStats(flight, observations);
+
+        // Assert
         Assert.Equal("2026-01-15", result.Series[2].Date);
     }
 
@@ -363,7 +508,7 @@ public class FlightStatsServiceTests
     #region ComputeDaysToDepartureStats Tests
 
     [Fact]
-    public void ComputeDaysToDepartureStats_Bucket1_ShouldGroupByDay()
+    public void ComputeDaysToDepartureStats_Bucket1_ShouldGroupByDay_Count()
     {
         // Arrange
         var flight = CreateTestFlight();
@@ -383,16 +528,142 @@ public class FlightStatsServiceTests
 
         // Assert
         Assert.Equal(3, result.Series.Count);
+    }
+
+    [Fact]
+    public void ComputeDaysToDepartureStats_Bucket1_ShouldGroupByDay_FirstBucket()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        flight.DepartureDate = new DateTime(2026, 1, 20);
+        var observations = new List<ObservationEntity>
+        {
+            // 10 days before
+            CreateObservation(flight.Id, new DateTime(2026, 1, 10, 12, 0, 0, DateTimeKind.Utc), 100m),
+            // 9 days before
+            CreateObservation(flight.Id, new DateTime(2026, 1, 11, 12, 0, 0, DateTimeKind.Utc), 110m),
+            // 5 days before
+            CreateObservation(flight.Id, new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc), 150m),
+        };
+
+        // Act
+        var result = _service.ComputeDaysToDepartureStats(flight, observations, bucket: 1);
+
+        // Assert
         Assert.Equal(5, result.Series[0].DaysFrom);
         Assert.Equal(6, result.Series[0].DaysTo);
+    }
+
+    [Fact]
+    public void ComputeDaysToDepartureStats_Bucket1_ShouldGroupByDay_SecondBucket()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        flight.DepartureDate = new DateTime(2026, 1, 20);
+        var observations = new List<ObservationEntity>
+        {
+            // 10 days before
+            CreateObservation(flight.Id, new DateTime(2026, 1, 10, 12, 0, 0, DateTimeKind.Utc), 100m),
+            // 9 days before
+            CreateObservation(flight.Id, new DateTime(2026, 1, 11, 12, 0, 0, DateTimeKind.Utc), 110m),
+            // 5 days before
+            CreateObservation(flight.Id, new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc), 150m),
+        };
+
+        // Act
+        var result = _service.ComputeDaysToDepartureStats(flight, observations, bucket: 1);
+
+        // Assert
         Assert.Equal(9, result.Series[1].DaysFrom);
         Assert.Equal(10, result.Series[1].DaysTo);
+    }
+
+    [Fact]
+    public void ComputeDaysToDepartureStats_Bucket1_ShouldGroupByDay_ThirdBucket()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        flight.DepartureDate = new DateTime(2026, 1, 20);
+        var observations = new List<ObservationEntity>
+        {
+            // 10 days before
+            CreateObservation(flight.Id, new DateTime(2026, 1, 10, 12, 0, 0, DateTimeKind.Utc), 100m),
+            // 9 days before
+            CreateObservation(flight.Id, new DateTime(2026, 1, 11, 12, 0, 0, DateTimeKind.Utc), 110m),
+            // 5 days before
+            CreateObservation(flight.Id, new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc), 150m),
+        };
+
+        // Act
+        var result = _service.ComputeDaysToDepartureStats(flight, observations, bucket: 1);
+
+        // Assert
         Assert.Equal(10, result.Series[2].DaysFrom);
         Assert.Equal(11, result.Series[2].DaysTo);
     }
 
     [Fact]
-    public void ComputeDaysToDepartureStats_Bucket7_ShouldGroupByWeek()
+    public void ComputeDaysToDepartureStats_Bucket7_FirstBucket()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        flight.DepartureDate = new DateTime(2026, 1, 30);
+        var observations = new List<ObservationEntity>
+        {
+            // 5 days before (bucket 0-7)
+            CreateObservation(flight.Id, new DateTime(2026, 1, 25, 12, 0, 0, DateTimeKind.Utc), 200m),
+        };
+
+        var expectedBucket = new DaysToDepartureStatsBucketDto
+        {
+            DaysFrom = 0,
+            DaysTo = 7,
+            Count = 1,
+            Min = 200m,
+            Max = 200m,
+            Avg = 200m,
+            Median = 200m
+        };
+
+        // Act
+        var result = _service.ComputeDaysToDepartureStats(flight, observations, bucket: 7);
+
+        // Assert
+        Assert.Equivalent(expectedBucket, result.Series[0]);
+    }
+
+    [Fact]
+    public void ComputeDaysToDepartureStats_Bucket7_SecondBucket()
+    {
+        // Arrange
+        var flight = CreateTestFlight();
+        flight.DepartureDate = new DateTime(2026, 1, 30);
+        var observations = new List<ObservationEntity>
+        {
+            // 10 days before (bucket 7-14)
+            CreateObservation(flight.Id, new DateTime(2026, 1, 20, 12, 0, 0, DateTimeKind.Utc), 150m),
+        };
+
+        var expectedBucket = new DaysToDepartureStatsBucketDto
+        {
+            DaysFrom = 7,
+            DaysTo = 14,
+            Count = 1,
+            Min = 150m,
+            Max = 150m,
+            Avg = 150m,
+            Median = 150m
+        };
+
+        // Act
+        var result = _service.ComputeDaysToDepartureStats(flight, observations, bucket: 7);
+
+        // Assert
+        Assert.Equivalent(expectedBucket, result.Series[0]);
+    }
+
+    [Fact]
+    public void ComputeDaysToDepartureStats_Bucket7_ThirdBucket()
     {
         // Arrange
         var flight = CreateTestFlight();
@@ -402,33 +673,24 @@ public class FlightStatsServiceTests
             // 20 days before (bucket 14-21)
             CreateObservation(flight.Id, new DateTime(2026, 1, 10, 12, 0, 0, DateTimeKind.Utc), 100m),
             CreateObservation(flight.Id, new DateTime(2026, 1, 11, 12, 0, 0, DateTimeKind.Utc), 110m),
-            // 10 days before (bucket 7-14)
-            CreateObservation(flight.Id, new DateTime(2026, 1, 20, 12, 0, 0, DateTimeKind.Utc), 150m),
-            // 5 days before (bucket 0-7)
-            CreateObservation(flight.Id, new DateTime(2026, 1, 25, 12, 0, 0, DateTimeKind.Utc), 200m),
+        };
+
+        var expectedBucket = new DaysToDepartureStatsBucketDto
+        {
+            DaysFrom = 14,
+            DaysTo = 21,
+            Count = 2,
+            Min = 100m,
+            Max = 110m,
+            Avg = 105m,
+            Median = 105m
         };
 
         // Act
         var result = _service.ComputeDaysToDepartureStats(flight, observations, bucket: 7);
 
         // Assert
-        Assert.Equal(3, result.Series.Count);
-
-        var firstBucket = result.Series[0];
-        Assert.Equal(0, firstBucket.DaysFrom);
-        Assert.Equal(7, firstBucket.DaysTo);
-        Assert.Equal(1, firstBucket.Count);
-
-        var secondBucket = result.Series[1];
-        Assert.Equal(7, secondBucket.DaysFrom);
-        Assert.Equal(14, secondBucket.DaysTo);
-        Assert.Equal(1, secondBucket.Count);
-
-        var thirdBucket = result.Series[2];
-        Assert.Equal(14, thirdBucket.DaysFrom);
-        Assert.Equal(21, thirdBucket.DaysTo);
-        Assert.Equal(2, thirdBucket.Count);
-        Assert.Equal(105m, thirdBucket.Avg);
+        Assert.Equivalent(expectedBucket, result.Series[0]);
     }
 
     [Fact]
@@ -445,13 +707,23 @@ public class FlightStatsServiceTests
             CreateObservation(flight.Id, new DateTime(2026, 1, 10, 12, 0, 0, DateTimeKind.Utc), 100m),
         };
 
+        var expectedBucket = new DaysToDepartureStatsBucketDto
+        {
+            DaysFrom = 5,
+            DaysTo = 6,
+            Count = 1,
+            Min = 100m,
+            Max = 100m,
+            Avg = 100m,
+            Median = 100m
+        };
+
         // Act
         var result = _service.ComputeDaysToDepartureStats(flight, observations, bucket: 1);
 
         // Assert
-        Assert.Equal(1, result.Series.Count);
-        Assert.Equal(5, result.Series[0].DaysFrom);
-        Assert.Equal(100m, result.Series[0].Min);
+        Assert.Single(result.Series);
+        Assert.Equivalent(expectedBucket, result.Series[0]);
     }
 
     #endregion

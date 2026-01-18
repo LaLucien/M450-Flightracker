@@ -2,6 +2,7 @@ using FlightTracker.Api.Services;
 using FlightTracker.Api.Infrastructure.LiteDb;
 using FlightTracker.Api.Storage.Repositories;
 using FlightTracker.Api.Services.Background;
+using FlightTracker.Api.Infrastructure;
 
 namespace FlightTracker.Api
 {
@@ -24,23 +25,24 @@ namespace FlightTracker.Api
             builder.Services.AddScoped<IFlightRepository, FlightRepository>();
             builder.Services.AddScoped<IObservationRepository, ObservationRepository>();
             builder.Services.AddScoped<IQueryRepository, QueryRepository>();
+            builder.Services.AddScoped<IScheduleRepository, ScheduleRepository>();
 
             // Services
             builder.Services.AddScoped<IFlightStatsService, FlightStatsService>();
             builder.Services.AddScoped<DataSeederService>();
-            builder.Services.AddScoped<DefaultFlightScrapingService>();
 
-            // Background scheduler dependencies (disabled for now until implementation ready)
-            // builder.Services.AddSingleton<ITimeProvider, SystemTimeProvider>();
-            // builder.Services.AddSingleton<IScheduleConfigProvider, DefaultScheduleConfigProvider>();
-            // builder.Services.AddSingleton<IFlightScrapingService, DefaultFlightScrapingService>();
-            // builder.Services.AddHostedService<ScrapeScheduler>();
+            // Background scheduler
+            builder.Services.AddSingleton<ITimeProvider, SystemTimeProvider>();
+            builder.Services.AddSingleton<IScheduleConfigProvider, DatabaseScheduleConfigProvider>();
+            builder.Services.AddSingleton<IFlightScrapingService, DefaultFlightScrapingService>();
+            builder.Services.AddHostedService<ScrapeScheduler>();
 
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowLocalFrontend", policy =>
                 {
                     policy.WithOrigins("https://localhost:7108")
+                    .WithOrigins("http://localhost:5006")
                           .AllowAnyHeader()
                           .AllowAnyMethod();
                 });

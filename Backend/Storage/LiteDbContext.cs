@@ -34,8 +34,9 @@ public class LiteDbContext : IDisposable
 
     public ILiteCollection<FlightEntity> Flights { get; }
     public ILiteCollection<ObservationEntity> Observations { get; }
-
     public ILiteCollection<QueryEntity> Queries { get; }
+
+    internal LiteDatabase Database => _database;
 
     public void Dispose()
     {

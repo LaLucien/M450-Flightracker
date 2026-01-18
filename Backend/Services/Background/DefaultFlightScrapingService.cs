@@ -48,6 +48,9 @@ public class DefaultFlightScrapingService : IFlightScrapingService
 
             options.AddArgument("--headless");
             _driver = new ChromeDriver(options);
+
+            // Accept cookies once when driver is initialized
+            EnsureGoogleFlightCookiesAccepted();
         }
     }
 
@@ -59,34 +62,29 @@ public class DefaultFlightScrapingService : IFlightScrapingService
 
     public async Task ScrapeFlightsAsync(CancellationToken cancellationToken = default)
     {
-        EnsureDriverInitialized();
-        
+
         using var scope = _serviceProvider.CreateScope();
         var queryRepository = scope.ServiceProvider.GetRequiredService<IQueryRepository>();
-
-        EnsureGoogleFlightCookiesAccepted();
         var queries = queryRepository.GetAll();
         var tasks = new List<Task>();
         foreach (var query in queries)
         {
             await Scrape(query, cancellationToken);
         }
-
-
-
     }
 
-    public void EnsureGoogleFlightCookiesAccepted()
+    private void EnsureGoogleFlightCookiesAccepted()
     {
         _driver!.Navigate().GoToUrl("https://www.google.com/travel/flights?tfs=CBwQARoOagwIAhIIL20vMDg5NjZAAUgBcAGCAQsI____________AZgBAg&tfu=KgIIAw");
         var acceptCokieBanner = _driver.FindElement(By.XPath("//button[@aria-label=\"Accept all\"]"));
         acceptCokieBanner?.Click();
         Thread.Sleep(200);
-
     }
 
     public async Task Scrape(QueryEntity query, CancellationToken cancellationToken)
     {
+        EnsureDriverInitialized();
+
         using var scope = _serviceProvider.CreateScope();
         var flightRepository = scope.ServiceProvider.GetRequiredService<IFlightRepository>();
         var observationRepository = scope.ServiceProvider.GetRequiredService<IObservationRepository>();
@@ -152,24 +150,8 @@ public class DefaultFlightScrapingService : IFlightScrapingService
                 _flightRepository.Insert(flight);
                 observation.FlightId = flight.Id;
                 observationRepository.Insert(observation);
-
-
-
-
-
-
-
-
-
-
-
             }
-
-
         }
-
-
-
     }
 
     private string ExtractNumber(string leg)
@@ -236,6 +218,4 @@ public class DefaultFlightScrapingService : IFlightScrapingService
         .SendKeys(Keys.Enter)
         .Perform();
     }
-
-
 }

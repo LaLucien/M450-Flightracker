@@ -11,9 +11,9 @@ namespace FlightTracker.Api.Controllers
     public class DevController : ControllerBase
     {
         private readonly DataSeederService _seederService;
-        private readonly DefaultFlightScrapingService flightScraper;
+        private readonly IFlightScrapingService flightScraper;
 
-        public DevController(DataSeederService seederService, DefaultFlightScrapingService scrapingService)
+        public DevController(DataSeederService seederService, IFlightScrapingService scrapingService)
         {
             _seederService = seederService;
             flightScraper = scrapingService;
@@ -39,9 +39,7 @@ namespace FlightTracker.Api.Controllers
             try
             {
                 var query = new QueryEntity() { DestinationIata = "ZRH", OriginIata = "JFK", AnchorDate = DateTime.UtcNow.AddDays(30), FlexibilityDays = 2 };
-                flightScraper.EnsureGoogleFlightCookiesAccepted();
-                var scrapeTask = flightScraper.Scrape(query, CancellationToken.None);
-                await scrapeTask;
+                await flightScraper.Scrape(query, CancellationToken.None);
                 return Ok(new { message = "Scraping completed successfully" });
             }
             catch (Exception ex)
@@ -55,7 +53,7 @@ namespace FlightTracker.Api.Controllers
         {
             try
             {
-                
+
                 await flightScraper.ScrapeFlightsAsync();
                 return Ok(new { message = "Success" });
             }

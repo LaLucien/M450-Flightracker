@@ -1,19 +1,23 @@
 using FlightTracker.Api.Storage.Repositories;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FlightTracker.Api.Services.Background;
 
 public class DatabaseScheduleConfigProvider : IScheduleConfigProvider
 {
-    private readonly IScheduleRepository _scheduleRepository;
+    private readonly IServiceProvider _serviceProvider;
 
-    public DatabaseScheduleConfigProvider(IScheduleRepository scheduleRepository)
+    public DatabaseScheduleConfigProvider(IServiceProvider serviceProvider)
     {
-        _scheduleRepository = scheduleRepository;
+        _serviceProvider = serviceProvider;
     }
 
     public Task<ScheduleConfig> GetScheduleAsync(CancellationToken cancellationToken = default)
     {
-        var schedules = _scheduleRepository.GetAll();
+        using var scope = _serviceProvider.CreateScope();
+        var scheduleRepository = scope.ServiceProvider.GetRequiredService<IScheduleRepository>();
+
+        var schedules = scheduleRepository.GetAll();
         var times = schedules.Select(s => s.Time).ToList();
 
         // Default to 9 AM and 9 PM if no schedules configured

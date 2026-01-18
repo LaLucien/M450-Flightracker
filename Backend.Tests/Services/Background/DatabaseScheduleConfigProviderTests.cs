@@ -2,12 +2,20 @@ using System.Reflection;
 using FlightTracker.Api.Services.Background;
 using FlightTracker.Api.Storage.Entities;
 using FlightTracker.Api.Storage.Repositories;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 namespace Backend.Tests.Services.Background;
 
 public class DatabaseScheduleConfigProviderTests
 {
+    private IServiceProvider CreateServiceProvider(Mock<IScheduleRepository> mockRepository)
+    {
+        var services = new ServiceCollection();
+        services.AddScoped(_ => mockRepository.Object);
+        return services.BuildServiceProvider();
+    }
+
     [Fact]
     public async Task GetScheduleAsync_WhenSchedulesExist_ReturnsConfigWithTimes()
     {
@@ -20,7 +28,8 @@ public class DatabaseScheduleConfigProviderTests
             new ScrapeSchedule { Id = 3, Time = new TimeOnly(21, 0) }
         };
         mockRepository.Setup(r => r.GetAll()).Returns(schedules);
-        var provider = new DatabaseScheduleConfigProvider(mockRepository.Object);
+        var serviceProvider = CreateServiceProvider(mockRepository);
+        var provider = new DatabaseScheduleConfigProvider(serviceProvider);
 
         // Act
         var result = await provider.GetScheduleAsync();
@@ -36,7 +45,8 @@ public class DatabaseScheduleConfigProviderTests
         // Arrange
         var mockRepository = new Mock<IScheduleRepository>();
         mockRepository.Setup(r => r.GetAll()).Returns(Array.Empty<ScrapeSchedule>());
-        var provider = new DatabaseScheduleConfigProvider(mockRepository.Object);
+        var serviceProvider = CreateServiceProvider(mockRepository);
+        var provider = new DatabaseScheduleConfigProvider(serviceProvider);
 
         // Act
         var result = await provider.GetScheduleAsync();
@@ -52,7 +62,8 @@ public class DatabaseScheduleConfigProviderTests
         // Arrange
         var mockRepository = new Mock<IScheduleRepository>();
         mockRepository.Setup(r => r.GetAll()).Returns(Array.Empty<ScrapeSchedule>());
-        var provider = new DatabaseScheduleConfigProvider(mockRepository.Object);
+        var serviceProvider = CreateServiceProvider(mockRepository);
+        var provider = new DatabaseScheduleConfigProvider(serviceProvider);
 
         // Act
         await provider.GetScheduleAsync();
@@ -71,7 +82,8 @@ public class DatabaseScheduleConfigProviderTests
             new ScrapeSchedule { Id = 1, Time = new TimeOnly(12, 0) }
         };
         mockRepository.Setup(r => r.GetAll()).Returns(schedules);
-        var provider = new DatabaseScheduleConfigProvider(mockRepository.Object);
+        var serviceProvider = CreateServiceProvider(mockRepository);
+        var provider = new DatabaseScheduleConfigProvider(serviceProvider);
 
         // Act
         var result = await provider.GetScheduleAsync();
@@ -91,7 +103,8 @@ public class DatabaseScheduleConfigProviderTests
             new ScrapeSchedule { Id = 1, Time = new TimeOnly(5, 5) }
         };
         mockRepository.Setup(r => r.GetAll()).Returns(schedules);
-        var provider = new DatabaseScheduleConfigProvider(mockRepository.Object);
+        var serviceProvider = CreateServiceProvider(mockRepository);
+        var provider = new DatabaseScheduleConfigProvider(serviceProvider);
 
         // Act
         var result = await provider.GetScheduleAsync();

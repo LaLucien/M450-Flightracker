@@ -19,37 +19,48 @@ namespace FlightTracker.Api.Services.Background;
 /// </summary>
 public class DefaultFlightScrapingService : IFlightScrapingService
 {
-    private IWebDriver _driver;
+    private IWebDriver? _driver;
     private readonly IServiceProvider _serviceProvider;
-
+    private readonly IConfiguration _configuration;
+    private readonly object _driverLock = new object();
 
     public DefaultFlightScrapingService(IServiceProvider serviceProvider, IConfiguration configuration)
     {
         _serviceProvider = serviceProvider;
+        _configuration = configuration;
+    }
 
-        new DriverManager().SetUpDriver(new ChromeConfig(), VersionResolveStrategy.MatchingBrowser);
+    private void EnsureDriverInitialized()
+    {
+        if (_driver != null) return;
 
-        var options = new ChromeOptions();
-        if (configuration["TESTRUNNER"] == "roche-pc")
+        lock (_driverLock)
         {
-            options.BinaryLocation = configuration["CHROME_EXE"];
+            if (_driver != null) return;
+
+            new DriverManager().SetUpDriver(new ChromeConfig(), VersionResolveStrategy.MatchingBrowser);
+
+            var options = new ChromeOptions();
+            if (_configuration["TESTRUNNER"] == "roche-pc")
+            {
+                options.BinaryLocation = _configuration["CHROME_EXE"];
+            }
+
+            options.AddArgument("--headless");
+            _driver = new ChromeDriver(options);
         }
-
-        options.AddArgument("--headless");
-        _driver = new ChromeDriver(options);
-
-
-
     }
 
     ~DefaultFlightScrapingService()
     {
-        _driver.Quit();
-        _driver.Dispose();
+        _driver?.Quit();
+        _driver?.Dispose();
     }
 
     public async Task ScrapeFlightsAsync(CancellationToken cancellationToken = default)
     {
+        EnsureDriverInitialized();
+        
         using var scope = _serviceProvider.CreateScope();
         var queryRepository = scope.ServiceProvider.GetRequiredService<IQueryRepository>();
 
@@ -67,7 +78,7 @@ public class DefaultFlightScrapingService : IFlightScrapingService
 
     public void EnsureGoogleFlightCookiesAccepted()
     {
-        _driver.Navigate().GoToUrl("https://www.google.com/travel/flights?tfs=CBwQARoOagwIAhIIL20vMDg5NjZAAUgBcAGCAQsI____________AZgBAg&tfu=KgIIAw");
+        _driver!.Navigate().GoToUrl("https://www.google.com/travel/flights?tfs=CBwQARoOagwIAhIIL20vMDg5NjZAAUgBcAGCAQsI____________AZgBAg&tfu=KgIIAw");
         var acceptCokieBanner = _driver.FindElement(By.XPath("//button[@aria-label=\"Accept all\"]"));
         acceptCokieBanner?.Click();
         Thread.Sleep(200);
@@ -91,7 +102,7 @@ public class DefaultFlightScrapingService : IFlightScrapingService
             var departureDate = query.AnchorDate.AddDays(flexDay);
 
             // One Way Selected URL
-            _driver.Navigate().GoToUrl("https://www.google.com/travel/flights?tfs=CBwQARoOagwIAhIIL20vMDg5NjZAAUgBcAGCAQsI____________AZgBAg&tfu=KgIIAw");
+            _driver!.Navigate().GoToUrl("https://www.google.com/travel/flights?tfs=CBwQARoOagwIAhIIL20vMDg5NjZAAUgBcAGCAQsI____________AZgBAg&tfu=KgIIAw");
             EnterOrigin(query.OriginIata);
             EnterDestination(query.DestinationIata);
             EnterDeparture(departureDate);
@@ -99,7 +110,7 @@ public class DefaultFlightScrapingService : IFlightScrapingService
             Thread.Sleep(500);
 
             // Scrape top 10 results
-            var flightCards = _driver.FindElements(By.XPath("//div[contains(@aria-label, \"Select flight\")]/parent::*/parent::li"));
+            var flightCards = _driver!.FindElements(By.XPath("//div[contains(@aria-label, \"Select flight\")]/parent::*/parent::li"));
             foreach (var card in flightCards.Take(10))
             {
                 ObservationEntity observation = new()
@@ -169,8 +180,8 @@ public class DefaultFlightScrapingService : IFlightScrapingService
 
     private void Explore()
     {
-        var searchButton = _driver.FindElement(By.XPath("//span[text()=\"Search\"]"));
-        new Actions(_driver)
+        var searchButton = _driver!.FindElement(By.XPath("//span[text()=\"Search\"]"));
+        new Actions(_driver!)
             .Click(searchButton)
             .Pause(TimeSpan.FromMilliseconds(200))
             .Perform();
@@ -178,10 +189,10 @@ public class DefaultFlightScrapingService : IFlightScrapingService
 
     private void EnterDeparture(DateTime dateTime)
     {
-        var dateField = _driver.FindElement(By.XPath("//input[@aria-label=\"Departure\"]"));
+        var dateField = _driver!.FindElement(By.XPath("//input[@aria-label=\"Departure\"]"));
         var dateString = dateTime.ToString("MMM d");
 
-        new Actions(_driver)
+        new Actions(_driver!)
             .Click(dateField)
             .Pause(TimeSpan.FromMilliseconds(200))
             .SendKeys(dateString)
@@ -201,8 +212,8 @@ public class DefaultFlightScrapingService : IFlightScrapingService
 
     private void EnterDestination(string destinationIata)
     {
-        var destinationField = _driver.FindElement(By.XPath("//input[@aria-label=\"Where to? \"]"));
-        new Actions(_driver)
+        var destinationField = _driver!.FindElement(By.XPath("//input[@aria-label=\"Where to? \"]"));
+        new Actions(_driver!)
             .Click(destinationField)
             .Pause(TimeSpan.FromMilliseconds(200))
             .SendKeys(destinationIata)
@@ -213,8 +224,8 @@ public class DefaultFlightScrapingService : IFlightScrapingService
 
     private void EnterOrigin(string originIata)
     {
-        var inputField = _driver.FindElement(By.XPath("//input[@aria-label=\"Where from?\"]"));
-        new Actions(_driver)
+        var inputField = _driver!.FindElement(By.XPath("//input[@aria-label=\"Where from?\"]"));
+        new Actions(_driver!)
         .Click(inputField)
         .Pause(TimeSpan.FromMilliseconds(200))
         .KeyDown(Keys.Control).SendKeys("a").KeyUp(Keys.Control)

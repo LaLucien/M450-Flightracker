@@ -116,7 +116,6 @@ public class DefaultFlightScrapingService : IFlightScrapingService
                     ObservedAtUtc = DateTime.UtcNow
                 };
 
-                
                 //price extraction
                 var priceSpan = card.FindElement(By.XPath(".//span[contains(@aria-label, \"Swiss francs\")]"));
                 var priceText = priceSpan.GetAttribute("aria-label");
@@ -134,9 +133,8 @@ public class DefaultFlightScrapingService : IFlightScrapingService
                 // check if flight already exists
                 var flight = _flightRepository.FindUnique(flightNumber, departureDate, query.OriginIata, query.DestinationIata);
 
-
                 // Insert flight and observation
-                if(flight is null)
+                if (flight is null)
                 {
                     flight = new()
                     {
@@ -147,7 +145,6 @@ public class DefaultFlightScrapingService : IFlightScrapingService
                     };
                     _flightRepository.Insert(flight);
                 }
-                _flightRepository.Insert(flight);
                 observation.FlightId = flight.Id;
                 observationRepository.Insert(observation);
             }

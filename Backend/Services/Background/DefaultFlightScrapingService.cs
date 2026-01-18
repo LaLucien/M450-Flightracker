@@ -103,13 +103,7 @@ public class DefaultFlightScrapingService : IFlightScrapingService
                     ObservedAtUtc = DateTime.UtcNow
                 };
 
-                FlightEntity flight = new()
-                {
-                    OriginIata = query.OriginIata,
-                    DepartureDate = departureDate,
-                    DestinationIata = query.DestinationIata,
-
-                };
+                
                 //price extraction
                 var priceSpan = card.FindElement(By.XPath(".//span[contains(@aria-label, \"Swiss francs\")]"));
                 var priceText = priceSpan.GetAttribute("aria-label");
@@ -122,10 +116,24 @@ public class DefaultFlightScrapingService : IFlightScrapingService
                 var itenerary = CO2DivLink?.Split("=")[1];
                 var legs = itenerary?.SplitCommas();
                 var flightNumbers = legs?.Select(l => ExtractNumber(l)).ToList();
-                flight.FlightNumber = string.Join(", ", flightNumbers!);
+                var flightNumber = string.Join(", ", flightNumbers!);
+
+                // check if flight already exists
+                var flight = _flightRepository.FindUnique(flightNumber, departureDate, query.OriginIata, query.DestinationIata);
+
 
                 // Insert flight and observation
-                _flightRepository.Insert(flight);
+                if(flight is null)
+                {
+                    flight = new()
+                    {
+                        FlightNumber = flightNumber,
+                        OriginIata = query.OriginIata,
+                        DepartureDate = departureDate,
+                        DestinationIata = query.DestinationIata,
+                    };
+                    _flightRepository.Insert(flight);
+                }
                 observation.FlightId = flight.Id;
                 _observationRepository.Insert(observation);
 

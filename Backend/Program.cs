@@ -41,6 +41,7 @@ namespace FlightTracker.Api
                 options.AddPolicy("AllowLocalFrontend", policy =>
                 {
                     policy.WithOrigins("https://localhost:7108")
+                    .WithOrigins("http://localhost:5006")
                           .AllowAnyHeader()
                           .AllowAnyMethod();
                 });

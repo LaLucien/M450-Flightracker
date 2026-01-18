@@ -157,6 +157,28 @@ public class DefaultFlightScrapingService : IFlightScrapingService
         return $"{parts[2]} {parts[3]}";
     }
 
+    private void SelectOneWay()
+    {
+        var ticketTypeCombo = _driver.FindElement(By.XPath(
+            "//div[@role='combobox' and .//span[normalize-space(text())='Round trip' or normalize-space(text())='One way' or normalize-space(text())='Multi-city']]"
+        ));
+
+        new Actions(_driver)
+            .Click(ticketTypeCombo)
+            .Pause(TimeSpan.FromMilliseconds(200))
+            .Perform();
+
+        var oneWayOption = _driver.FindElement(By.XPath(
+            "//ul[@role='listbox']//span[normalize-space(text())='One way']"
+        ));
+
+        new Actions(_driver)
+            .Click(oneWayOption)
+            .Pause(TimeSpan.FromMilliseconds(200))
+            .Perform();
+    }
+
+
     private void Explore()
     {
         var searchButton = _driver!.FindElement(By.XPath("//span[text()=\"Search\"]"));

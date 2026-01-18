@@ -183,6 +183,25 @@ public class FlightsController(
         return Accepted();
     }
 
+    [HttpGet("queries")]
+    public ActionResult<List<QueryResponseDto>> GetQueries()
+    {
+        var entities = _queryRepository.GetAll();
+        var dtos = entities.Select(q => new QueryResponseDto { Id = q.Id.ToString(), OriginIata = q.OriginIata, DestinationIata = q.DestinationIata, DepartureDate = q.AnchorDate, FlexibilityDays = q.FlexibilityDays }).ToList();
+        return Ok(dtos);
+    }
 
+    [HttpDelete("queries/{id}")]
+    public IActionResult DeleteQuery(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return BadRequest("id is required");
+
+        var ok = _queryRepository.Delete(id);
+        if (ok)
+            return NoContent();
+
+        return NotFound();
+    }
 
 }

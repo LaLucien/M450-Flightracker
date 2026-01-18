@@ -407,7 +407,7 @@ public class FlightsControllerTests
         _mockStatsService.Setup(s => s.ComputeDaysToDepartureStats(flight, observations, 1))
             .Returns(statsResponse);
 
-        // Act - Not providing bucket parameter
+        // Act
         var result = _controller.GetDaysToDepartureStats(flight.Id.ToString());
 
         // Assert

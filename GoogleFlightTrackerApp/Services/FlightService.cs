@@ -128,5 +128,45 @@ namespace FlightTracker.Web.Services
                 return false;
             }
         }
+
+        // Development helper: trigger manual scrape on the backend
+        public async Task<bool> TriggerManualScrapeAsync()
+        {
+            try
+            {
+                var resp = await _http.GetAsync("api/dev/ManualScrape");
+                return resp.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<bool> TriggerSeedAsync()
+        {
+            try
+            {
+                var resp = await _http.PostAsync("api/dev/seed", null);
+                return resp.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<FlexStatsResponseDto?> GetFlexStatsAsync(string origin, string destination, string targetDate, int flexDays)
+        {
+            try
+            {
+                var url = $"api/routes/{Uri.EscapeDataString(origin)}/{Uri.EscapeDataString(destination)}/stats/flex?target_date={Uri.EscapeDataString(targetDate)}&flex_days={flexDays}";
+                return await _http.GetFromJsonAsync<FlexStatsResponseDto>(url);
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 }

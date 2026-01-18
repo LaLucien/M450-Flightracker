@@ -17,6 +17,7 @@ namespace FlightTracker.Web
 
             builder.Services.AddMudServices();
             builder.Services.AddScoped<FlightService>();
+            builder.Services.AddSingleton<UiRefreshService>();
             builder.Services.AddScoped(sp =>
                 new HttpClient { BaseAddress = new Uri("https://localhost:7279/") });
 

@@ -131,7 +131,7 @@ public class DefaultFlightScrapingService : IFlightScrapingService
                 var flightNumber = string.Join(", ", flightNumbers!);
 
                 // check if flight already exists
-                var flight = _flightRepository.FindUnique(flightNumber, departureDate, query.OriginIata, query.DestinationIata);
+                var flight = flightRepository.FindUnique(flightNumber, departureDate, query.OriginIata, query.DestinationIata);
 
                 // Insert flight and observation
                 if (flight is null)
@@ -143,7 +143,7 @@ public class DefaultFlightScrapingService : IFlightScrapingService
                         DepartureDate = departureDate,
                         DestinationIata = query.DestinationIata,
                     };
-                    _flightRepository.Insert(flight);
+                    flightRepository.Insert(flight);
                 }
                 observation.FlightId = flight.Id;
                 observationRepository.Insert(observation);

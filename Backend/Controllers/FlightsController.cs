@@ -168,7 +168,7 @@ public class FlightsController(
     [HttpPost("query")]
     public IActionResult AddNewFlightQuery(FlightQueryDto dto)
     {
-        if(dto.DepartureDate == null)
+        if (dto.DepartureDate == null)
         {
             return BadRequest("DepartureDate is required.");
         }

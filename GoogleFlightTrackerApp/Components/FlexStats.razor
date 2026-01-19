@@ -1,0 +1,116 @@
+@using FlightTracker.Contracts
+@using MudBlazor
+@inject FlightTracker.Web.Services.FlightService FlightService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+@code {
+ [Parameter] public string? Origin { get; set; }
+ [Parameter] public string? Destination { get; set; }
+ [Parameter] public string? TargetDate { get; set; } // yyyy-MM-dd
+ [Parameter] public int? FlexDays { get; set; }
+
+ private string _origin = string.Empty;
+ private string _destination = string.Empty;
+ private DateTime? _targetDate = DateTime.Today.AddDays(7);
+ private int _flexDays =3;
+ private bool _loading = false;
+
+ private FlightTracker.Contracts.FlexStatsResponseDto? _flexStats;
+
+ protected override async Task OnParametersSetAsync()
+ {
+ if (!string.IsNullOrWhiteSpace(Origin)) _origin = Origin!;
+ if (!string.IsNullOrWhiteSpace(Destination)) _destination = Destination!;
+ if (!string.IsNullOrWhiteSpace(TargetDate))
+ {
+ if (DateTime.TryParseExact(TargetDate!, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsed))
+ _targetDate = parsed;
+ }
+ if (FlexDays.HasValue) _flexDays = FlexDays.Value;
+
+ if (!string.IsNullOrWhiteSpace(_origin) && !string.IsNullOrWhiteSpace(_destination) && _targetDate.HasValue)
+ {
+ await LoadFlexAsync();
+ }
+ }
+
+ private async Task LoadFlexAsync()
+ {
+ if (string.IsNullOrWhiteSpace(_origin) || string.IsNullOrWhiteSpace(_destination) || !_targetDate.HasValue)
+ return;
+
+ _loading = true;
+ try
+ {
+ var target = _targetDate.Value.ToString("yyyy-MM-dd");
+ _flexStats = await FlightService.GetFlexStatsAsync(_origin, _destination, target, _flexDays);
+ if (_flexStats == null)
+ {
+ Snackbar.Add("Failed to load flex stats", Severity.Error);
+ }
+ }
+ catch
+ {
+ Snackbar.Add("Failed to load flex stats", Severity.Error);
+ }
+ finally
+ {
+ _loading = false;
+ }
+ }
+
+ private void OpenFlight(string id)
+ {
+ if (string.IsNullOrWhiteSpace(id)) return;
+ NavigationManager.NavigateTo($"/flights/{id}");
+ }
+}
+
+<MudCard Class="mb-4">
+ <MudCardContent>
+ <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+<MudTextField @bind-Value="_origin" Label="Origin (IATA)" Disabled="true" />
+<MudTextField @bind-Value="_destination" Label="Destination (IATA)" Disabled="true" />
+ <MudDatePicker @bind-Date="_targetDate" DateFormat="yyyy-MM-dd" Label="Target date" />
+ <MudNumericField @bind-Value="_flexDays" Label="Flex days" Min="0" />
+ <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadFlexAsync" Disabled="_loading">
+ @if (_loading)
+ {
+ <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+ }
+ else
+ {
+ <span>Get flex stats</span>
+ }
+ </MudButton>
+ </MudStack>
+ </MudCardContent>
+</MudCard>
+
+@if (_flexStats == null)
+{
+ <MudText>No data</MudText>
+}
+else
+{
+ <MudPaper Class="pa-4">
+ <MudText Typo="Typo.h6">Best: @_flexStats.Best?.DepartureDate — @_flexStats.Best?.MedianPriceChf CHF</MudText>
+ <MudTable Items="@_flexStats.Series" Dense="true" Hover="true" Bordered="true">
+ <HeaderContent>
+ <MudTh>Date</MudTh>
+ <MudTh>Median (CHF)</MudTh>
+ <MudTh>Flight</MudTh>
+ <MudTh></MudTh>
+ </HeaderContent>
+ <RowTemplate>
+ <MudTd>@context.DepartureDate</MudTd>
+ <MudTd>@context.MedianPriceChf</MudTd>
+ <MudTd>@context.FlightId</MudTd>
+ <MudTd>
+ <MudButton Variant="Variant.Text" OnClick="() => OpenFlight(context.FlightId)">Details</MudButton>
+ </MudTd>
+ </RowTemplate>
+ </MudTable>
+ </MudPaper>
+}

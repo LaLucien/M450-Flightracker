@@ -10,34 +10,34 @@
 <MudText Typo="Typo.h3" GutterBottom="true">Flugpreis-Tracker</MudText>
 
 <MudCard Class="mb-4">
- <MudCardContent>
- <MudText>Verwalte deine Beobachtungen und durchschaue bestehende Flüge.</MudText>
- </MudCardContent>
+    <MudCardContent>
+        <MudText>Verwalte deine Beobachtungen und durchschaue bestehende Flüge.</MudText>
+    </MudCardContent>
 </MudCard>
 
 <div class="mb-4 d-flex gap-2">
- <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnManualScrape" Disabled="_manualLoading">
- @if (_manualLoading)
- {
- <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
- <span>Starting…</span>
- }
- else
- {
- <span>Manual scrape</span>
- }
- </MudButton>
- <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="OnSeedData" Disabled="_seedLoading">
- @if (_seedLoading)
- {
- <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
- <span>Seeding…</span>
- }
- else
- {
- <span>Seed data</span>
- }
- </MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnManualScrape" Disabled="_manualLoading">
+        @if (_manualLoading)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            <span>Starting…</span>
+        }
+        else
+        {
+            <span>Manual scrape</span>
+        }
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="OnSeedData" Disabled="_seedLoading">
+        @if (_seedLoading)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            <span>Seeding…</span>
+        }
+        else
+        {
+            <span>Seed data</span>
+        }
+    </MudButton>
 </div>
 
 <!-- Reuse existing components -->
@@ -47,56 +47,56 @@
 
 
 @code {
- private bool _manualLoading = false;
- private bool _seedLoading = false;
+    private bool _manualLoading = false;
+    private bool _seedLoading = false;
 
- private async Task OnManualScrape()
- {
- _manualLoading = true;
- // show immediate feedback
- Snackbar.Add("Manual scrape started", Severity.Info);
- try
- {
- var ok = await FlightService.TriggerManualScrapeAsync();
- if (ok)
- {
- Snackbar.Add("Manual scrape completed", Severity.Success);
- // ask Flights component to refresh
- await UiRefreshService.RequestRefreshAsync();
- }
- else
- {
- Snackbar.Add("Manual scrape failed", Severity.Error);
- }
- }
- catch
- {
- Snackbar.Add("Failed to trigger manual scrape", Severity.Error);
- }
- finally
- {
- _manualLoading = false;
- }
- }
+    private async Task OnManualScrape()
+    {
+        _manualLoading = true;
+        // show immediate feedback
+        Snackbar.Add("Manual scrape started", Severity.Info);
+        try
+        {
+            var ok = await FlightService.TriggerManualScrapeAsync();
+            if (ok)
+            {
+                Snackbar.Add("Manual scrape completed", Severity.Success);
+                // ask Flights component to refresh
+                await UiRefreshService.RequestRefreshAsync();
+            }
+            else
+            {
+                Snackbar.Add("Manual scrape failed", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Failed to trigger manual scrape", Severity.Error);
+        }
+        finally
+        {
+            _manualLoading = false;
+        }
+    }
 
- private async Task OnSeedData()
- {
- _seedLoading = true;
- try
- {
- var resp = await FlightService.TriggerSeedAsync();
- if (resp)
- Snackbar.Add("Seeded sample data", Severity.Success);
- else
- Snackbar.Add("Seed failed", Severity.Error);
- }
- catch
- {
- Snackbar.Add("Seed failed", Severity.Error);
- }
- finally
- {
- _seedLoading = false;
- }
- }
+    private async Task OnSeedData()
+    {
+        _seedLoading = true;
+        try
+        {
+            var resp = await FlightService.TriggerSeedAsync();
+            if (resp)
+                Snackbar.Add("Seeded sample data", Severity.Success);
+            else
+                Snackbar.Add("Seed failed", Severity.Error);
+        }
+        catch
+        {
+            Snackbar.Add("Seed failed", Severity.Error);
+        }
+        finally
+        {
+            _seedLoading = false;
+        }
+    }
 }

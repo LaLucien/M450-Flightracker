@@ -5,149 +5,149 @@
 @inject NavigationManager NavigationManager
 
 <MudExpansionPanels Class="mb-5">
- <MudExpansionPanel Text="Beobachtung konfigurieren" Expanded="true">
- <MudStack Spacing="5">
- <MudTextField @bind-Value="_origin" Label="Origin (IATA)" />
- <MudTextField @bind-Value="_destination" Label="Destination (IATA)" />
- <MudDatePicker @bind-Date="_date" Label="Departure" DateFormat="yyyy-MM-dd" />
- <MudNumericField @bind-Value="_flexDays" Label="Flexibility days" Min="0" />
+    <MudExpansionPanel Text="Beobachtung konfigurieren" Expanded="true">
+        <MudStack Spacing="5">
+            <MudTextField @bind-Value="_origin" Label="Origin (IATA)" />
+            <MudTextField @bind-Value="_destination" Label="Destination (IATA)" />
+            <MudDatePicker @bind-Date="_date" Label="Departure" DateFormat="yyyy-MM-dd" />
+            <MudNumericField @bind-Value="_flexDays" Label="Flexibility days" Min="0" />
 
- <div class="d-flex mt-4">
- <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_saving">
- @if (_saving)
- {
- <MudProgressCircular Size="Size.Small" Indeterminate="true" />
- <span class="ms-2">Speichern…</span>
- }
- else
- {
- <span>Speichern</span>
- }
- </MudButton>
- </div>
- </MudStack>
- </MudExpansionPanel>
+            <div class="d-flex mt-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_saving">
+                    @if (_saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <span class="ms-2">Speichern…</span>
+                    }
+                    else
+                    {
+                        <span>Speichern</span>
+                    }
+                </MudButton>
+            </div>
+        </MudStack>
+    </MudExpansionPanel>
 </MudExpansionPanels>
 
 @if (SavedWatches?.Any() == true)
 {
- <MudExpansionPanels Class="mb-12">
- <MudExpansionPanel Text="@($"Gespeicherte Beobachtungen ({SavedWatches.Count})")">
- <MudPaper Class="mt-2 p-3">
- <MudList T="object">
- @foreach (var w in SavedWatches)
- {
- <MudListItem T="object">
- <div class="d-flex justify-content-between w-100">
- <div>
- <b>@w.OriginIata</b> → <b>@w.DestinationIata</b> (@w.DepartureDate.ToString("yyyy-MM-dd"))
- <div class="text-muted">Flex: @w.FlexibilityDays</div>
- </div>
- <div>
- <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="() => SearchFromWatch(w)">Suchen</MudButton>
- <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="() => RemoveWatch(w.Id)">Delete</MudButton>
- </div>
- </div>
- </MudListItem>
- }
- </MudList>
- </MudPaper>
- </MudExpansionPanel>
- </MudExpansionPanels>
+    <MudExpansionPanels Class="mb-12">
+        <MudExpansionPanel Text="@($"Gespeicherte Beobachtungen ({SavedWatches.Count})")">
+            <MudPaper Class="mt-2 p-3">
+                <MudList T="object">
+                    @foreach (var w in SavedWatches)
+                    {
+                        <MudListItem T="object">
+                            <div class="d-flex justify-content-between w-100">
+                                <div>
+                                    <b>@w.OriginIata</b> → <b>@w.DestinationIata</b> (@w.DepartureDate.ToString("yyyy-MM-dd"))
+                                    <div class="text-muted">Flex: @w.FlexibilityDays</div>
+                                </div>
+                                <div>
+                                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="() => SearchFromWatch(w)">Suchen</MudButton>
+                                    <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="() => RemoveWatch(w.Id)">Delete</MudButton>
+                                </div>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudPaper>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
 }
 
 @code {
- private string _origin = string.Empty;
- private string _destination = string.Empty;
- private DateTime? _date = DateTime.Today.AddDays(7);
- private int _flexDays =0;
- private bool _saving = false;
+    private string _origin = string.Empty;
+    private string _destination = string.Empty;
+    private DateTime? _date = DateTime.Today.AddDays(7);
+    private int _flexDays = 0;
+    private bool _saving = false;
 
- private List<QueryResponseDto> SavedWatches { get; set; } = new();
+    private List<QueryResponseDto> SavedWatches { get; set; } = new();
 
 
- protected override async Task OnInitializedAsync()
- {
- await LoadSavedAsync();
- }
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSavedAsync();
+    }
 
- private async Task LoadSavedAsync()
- {
- try
- {
- SavedWatches = await FlightService.GetQueriesAsync();
- }
- catch
- {
- Snackbar.Add("Failed to load saved watches from server", Severity.Error);
- }
- }
+    private async Task LoadSavedAsync()
+    {
+        try
+        {
+            SavedWatches = await FlightService.GetQueriesAsync();
+        }
+        catch
+        {
+            Snackbar.Add("Failed to load saved watches from server", Severity.Error);
+        }
+    }
 
- private async Task SaveAsync()
- {
- _saving = true;
- try
- {
- if (string.IsNullOrWhiteSpace(_origin) || string.IsNullOrWhiteSpace(_destination) || !_date.HasValue)
- {
- Snackbar.Add("Origin, Destination and Departure are required", Severity.Warning);
- return;
- }
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_origin) || string.IsNullOrWhiteSpace(_destination) || !_date.HasValue)
+            {
+                Snackbar.Add("Origin, Destination and Departure are required", Severity.Warning);
+                return;
+            }
 
- var dto = new FlightQueryDto
- {
- OriginIata = _origin.Trim().ToUpperInvariant(),
- DestinationIata = _destination.Trim().ToUpperInvariant(),
- DepartureDate = _date.Value.Date,
- FlexibilityDays = _flexDays
- };
+            var dto = new FlightQueryDto
+            {
+                OriginIata = _origin.Trim().ToUpperInvariant(),
+                DestinationIata = _destination.Trim().ToUpperInvariant(),
+                DepartureDate = _date.Value.Date,
+                FlexibilityDays = _flexDays
+            };
 
- await FlightService.AddFlightToWatchlistAsync(dto);
- Snackbar.Add("Saved on server", Severity.Success);
- await LoadSavedAsync();
+            await FlightService.AddFlightToWatchlistAsync(dto);
+            Snackbar.Add("Saved on server", Severity.Success);
+            await LoadSavedAsync();
 
- _origin = string.Empty;
- _destination = string.Empty;
- _date = DateTime.Today.AddDays(7);
- _flexDays =0;
- }
- catch
- {
- Snackbar.Add("Server not available", Severity.Error);
- }
- finally
- {
- _saving = false;
- }
- }
+            _origin = string.Empty;
+            _destination = string.Empty;
+            _date = DateTime.Today.AddDays(7);
+            _flexDays = 0;
+        }
+        catch
+        {
+            Snackbar.Add("Server not available", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
 
- private async Task RemoveWatch(string id)
- {
- try
- {
- var ok = await FlightService.DeleteQueryAsync(id);
- if (ok)
- {
- Snackbar.Add("Deleted on server", Severity.Success);
- await LoadSavedAsync();
- }
- else
- {
- Snackbar.Add("Server returned error when deleting", Severity.Error);
- }
- }
- catch
- {
- Snackbar.Add("Server not available", Severity.Error);
- }
- }
+    private async Task RemoveWatch(string id)
+    {
+        try
+        {
+            var ok = await FlightService.DeleteQueryAsync(id);
+            if (ok)
+            {
+                Snackbar.Add("Deleted on server", Severity.Success);
+                await LoadSavedAsync();
+            }
+            else
+            {
+                Snackbar.Add("Server returned error when deleting", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Server not available", Severity.Error);
+        }
+    }
 
- private void SearchFromWatch(QueryResponseDto w)
- {
- var origin = Uri.EscapeDataString(w.OriginIata ?? string.Empty);
- var dest = Uri.EscapeDataString(w.DestinationIata ?? string.Empty);
- var dep = Uri.EscapeDataString(w.DepartureDate.ToString("yyyy-MM-dd"));
- var url = $"/flights?origin={origin}&destination={dest}&departure_date={dep}";
- NavigationManager.NavigateTo(url);
- }
+    private void SearchFromWatch(QueryResponseDto w)
+    {
+        var origin = Uri.EscapeDataString(w.OriginIata ?? string.Empty);
+        var dest = Uri.EscapeDataString(w.DestinationIata ?? string.Empty);
+        var dep = Uri.EscapeDataString(w.DepartureDate.ToString("yyyy-MM-dd"));
+        var url = $"/flights?origin={origin}&destination={dest}&departure_date={dep}";
+        NavigationManager.NavigateTo(url);
+    }
 }

@@ -282,7 +282,6 @@
 
  _observations = await FlightService.GetObservationsAsync(id);
  _weekdayStats = await FlightService.GetWeekdayStatsAsync(id);
- // default booking window: last90 days
  _bookingFrom = DateTime.Today.AddDays(-90);
  _bookingTo = DateTime.Today;
  await LoadBookingDateStats();
@@ -323,13 +322,11 @@
  if (_flight == null) return;
  var origin = Uri.EscapeDataString(_flight.OriginIata ?? string.Empty);
  var dest = Uri.EscapeDataString(_flight.DestinationIata ?? string.Empty);
- // FlightResponseDto.DepartureDate is a string in YYYY-MM-DD format
  var dep = Uri.EscapeDataString(_flight.DepartureDate ?? string.Empty);
- var url = $"/flights?origin={origin}&destination={dest}&departure_date={dep}";
+ var url = $"/flights/search?origin={origin}&destination={dest}&departure_date={dep}";
  NavigationManager.NavigateTo(url);
  }
 
- // UI-only derived properties
  private decimal? LastPrice => _observations?.OrderByDescending(o => o.ObservedAtLocal).FirstOrDefault()?.PriceChf;
  private int ObservationsCount => _observations?.Count ??0;
 

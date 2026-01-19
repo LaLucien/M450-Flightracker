@@ -8,14 +8,18 @@
 
 <MudText Typo="Typo.h5" GutterBottom="true">Flugsuche</MudText>
 
-@* Filter panel is optional now *@
-@if (ShowFilter)
-{
- <MudCard Class="mb-4">
+<MudTabs>
+ <MudTab Label="Flights">
+ <MudExpansionPanels Class="mb-4">
+            <MudExpansionPanel Text="Results" Expanded="true">
+
+ @if (ShowFilter)
+ {
+ <MudCard Class="mb-0">
  <MudCardContent>
- <MudStack Row="true" Spacing="2">
- <MudTextField @bind-Value="_origin" Label="Origin (IATA)" />
- <MudTextField @bind-Value="_destination" Label="Destination (IATA)" />
+ <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+ <MudTextField Value="@(_origin ?? string.Empty)" Label="Origin (IATA)" Disabled="true" />
+ <MudTextField Value="@(_destination ?? string.Empty)" Label="Destination (IATA)" Disabled="true" />
  <MudDatePicker @bind-Date="_departureDate" Label="Departure" DateFormat="yyyy-MM-dd" />
  <MudTextField @bind-Value="_flightNumber" Label="Flight number (optional)" />
  <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SearchAsync" Disabled="@_loading">
@@ -31,14 +35,13 @@
  </MudStack>
  </MudCardContent>
  </MudCard>
-}
-
-@if (_flights == null && _loading)
-{
+ }
+ @if (_flights == null && _loading)
+ {
  <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
-}
-else
-{
+ }
+ else
+ {
  <MudTable Items="@_flights" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading">
  <HeaderContent>
  <MudTh>ID</MudTh>
@@ -62,7 +65,20 @@ else
  <MudText Typo="Typo.subtitle2" Align="Align.Center">Keine Flüge vorhanden</MudText>
  </NoRecordsContent>
  </MudTable>
-}
+ }
+            </MudExpansionPanel>
+ </MudExpansionPanels>
+ </MudTab>
+
+ <MudTab Label="Flex stats">
+ 
+ <MudExpansionPanels Class="mb-4">
+ <MudExpansionPanel Text="Flex stats" Expanded="true">
+ <FlexStats Origin="@_origin" Destination="@_destination" TargetDate='@(_departureDate?.ToString("yyyy-MM-dd"))' FlexDays="3" />
+ </MudExpansionPanel>
+ </MudExpansionPanels>
+ </MudTab>
+</MudTabs>
 
 @code {
  [Parameter]
@@ -71,8 +87,8 @@ else
  private List<FlightResponseDto>? _flights;
  private bool _loading = false;
 
- private string _origin = "ZRH";
- private string _destination = "LHR";
+ private string? _origin = null;
+ private string? _destination = null;
  private DateTime? _departureDate = DateTime.Today.AddDays(7);
  private string? _flightNumber;
 
@@ -83,7 +99,6 @@ else
  {
  UiRefreshService.RefreshRequested += HandleRefreshRequested;
 
- // parse query params and trigger search if provided
  var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
  var query = ParseQuery(uri.Query);
  if (query.TryGetValue("origin", out var qOrigin)) _origin = qOrigin;
@@ -96,7 +111,6 @@ else
  }
  }
 
- // automatically search if any of the query params were present, or if filter is hidden (embedded)
  if (query.ContainsKey("origin") || query.ContainsKey("destination") || query.ContainsKey("departure_date") || !ShowFilter)
  {
  await SearchAsync();
@@ -120,8 +134,8 @@ else
  {
  string? dep = _departureDate?.ToString("yyyy-MM-dd");
  _flights = await FlightService.GetFlightsAsync(
- origin: _origin,
- destination: _destination,
+ origin: string.IsNullOrWhiteSpace(_origin) ? null : _origin,
+ destination: string.IsNullOrWhiteSpace(_destination) ? null : _destination,
  departureDate: dep,
  flightNumber: string.IsNullOrWhiteSpace(_flightNumber) ? null : _flightNumber);
  }
@@ -137,7 +151,6 @@ else
  await OnSelected.InvokeAsync(dto);
  else
  {
- // fallback navigation to details page
  NavigationManager.NavigateTo($"/flights/{dto.Id}");
  }
  }
